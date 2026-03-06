@@ -1,6 +1,5 @@
 import { motion } from 'motion/react';
 import { getDecorationById } from '../data/decorations';
-import aquariumBg from 'figma:asset/28993c923e2a6347bf6180810dc490c083008f08.png';
 
 interface AquariumBackgroundProps {
   background: string;
@@ -10,15 +9,55 @@ interface AquariumBackgroundProps {
 export function AquariumBackground({ background, decorations }: AquariumBackgroundProps) {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Base photo background */}
+      {/* Base aquarium gradient background */}
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `url(${aquariumBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center bottom',
+          background: `
+            linear-gradient(180deg,
+              #0ea5e9 0%,
+              #0284c7 15%,
+              #0369a1 30%,
+              #075985 50%,
+              #0c4a6e 70%,
+              #082f49 100%
+            )
+          `,
         }}
       />
+      
+      {/* Sand/gravel bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-1/4"
+        style={{
+          background: `
+            linear-gradient(180deg,
+              transparent 0%,
+              rgba(180, 160, 120, 0.3) 20%,
+              rgba(160, 140, 100, 0.5) 40%,
+              rgba(140, 120, 80, 0.7) 60%,
+              rgba(120, 100, 60, 0.9) 100%
+            )
+          `,
+        }}
+      />
+      
+      {/* Underwater plants/rocks silhouette */}
+      <div className="absolute bottom-0 left-0 right-0 h-1/3 opacity-20">
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute bottom-0"
+            style={{
+              left: `${i * 12.5}%`,
+              width: '15%',
+              height: `${30 + Math.random() * 40}%`,
+              background: `linear-gradient(180deg, transparent, rgba(34, 197, 94, 0.4), rgba(22, 163, 74, 0.6))`,
+              clipPath: `polygon(${20 + Math.random() * 20}% 0%, ${80 + Math.random() * 20}% 0%, 100% 100%, 0% 100%)`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Color tint overlay from customization */}
       <div

@@ -1,8 +1,6 @@
 import { motion } from 'motion/react';
 import { Axolotl, FoodItem } from '../types/game';
 import { useEffect, useState } from 'react';
-import axolotlImg from 'figma:asset/043470ffe6ad47467d514f8f1cf193c89e1ad9f3.png';
-import { useRemoveWhiteBg } from '../hooks/useRemoveWhiteBg';
 
 interface AxolotlDisplayProps {
   axolotl: Axolotl;
@@ -13,7 +11,6 @@ interface AxolotlDisplayProps {
 export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplayProps) {
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [facingLeft, setFacingLeft] = useState(false);
-  const processedImg = useRemoveWhiteBg(axolotlImg);
 
   // Check for nearby food and swim to it
   useEffect(() => {
@@ -175,18 +172,94 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
           />
         </motion.div>
 
-        <img
-          src={processedImg || axolotlImg}
-          alt={axolotl.name}
+        {/* SVG Axolotl */}
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 200 200"
           style={{
-            width: size,
-            height: 'auto',
             transform: facingLeft ? 'scaleX(1)' : 'scaleX(-1)',
             filter: 'drop-shadow(0 0 8px rgba(160,120,255,0.4)) drop-shadow(0 0 20px rgba(100,180,255,0.3)) drop-shadow(0 4px 12px rgba(0,0,0,0.25))',
-            position: 'relative',
           }}
-          draggable={false}
-        />
+        >
+          {/* Body */}
+          <ellipse
+            cx="100"
+            cy="120"
+            rx="60"
+            ry="50"
+            fill={axolotl.color || '#FFB5E8'}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="2"
+          />
+          
+          {/* Head */}
+          <ellipse
+            cx="100"
+            cy="80"
+            rx="50"
+            ry="45"
+            fill={axolotl.color || '#FFB5E8'}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="2"
+          />
+          
+          {/* Gills (left side) */}
+          <g>
+            <ellipse cx="50" cy="85" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+            <ellipse cx="45" cy="95" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+            <ellipse cx="50" cy="105" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+          </g>
+          
+          {/* Gills (right side) */}
+          <g>
+            <ellipse cx="150" cy="85" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+            <ellipse cx="155" cy="95" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+            <ellipse cx="150" cy="105" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
+          </g>
+          
+          {/* Eyes */}
+          <circle cx="85" cy="75" r="12" fill="white" />
+          <circle cx="115" cy="75" r="12" fill="white" />
+          <circle cx="88" cy="78" r="6" fill="black" />
+          <circle cx="118" cy="78" r="6" fill="black" />
+          
+          {/* Smile */}
+          <path
+            d="M 85 95 Q 100 105 115 95"
+            stroke="rgba(0,0,0,0.3)"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+          />
+          
+          {/* Tail */}
+          <ellipse
+            cx="100"
+            cy="165"
+            rx="35"
+            ry="25"
+            fill={axolotl.color || '#FFB5E8'}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="2"
+          />
+          
+          {/* Pattern overlay (if spotted/striped) */}
+          {axolotl.pattern === 'spotted' && (
+            <>
+              <circle cx="100" cy="100" r="8" fill="rgba(255,255,255,0.4)" />
+              <circle cx="120" cy="130" r="6" fill="rgba(255,255,255,0.4)" />
+              <circle cx="80" cy="140" r="7" fill="rgba(255,255,255,0.4)" />
+            </>
+          )}
+          {axolotl.pattern === 'striped' && (
+            <>
+              <line x1="70" y1="90" x2="70" y2="150" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+              <line x1="100" y1="85" x2="100" y2="155" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+              <line x1="130" y1="90" x2="130" y2="150" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+            </>
+          )}
+        </svg>
       </motion.div>
     </motion.div>
   );
