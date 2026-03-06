@@ -34,6 +34,10 @@ import { DecorationsPanel } from './components/DecorationsPanel';
 import { Coins, Sparkles, Menu, X, Check, ChevronDown, ShoppingCart, Gamepad2, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { INITIAL_NOTIFICATIONS, GameNotification } from './data/notifications';
+import { KeepeyUpey } from './minigames/KeepeyUpey';
+import { FlappyFishHooks } from './minigames/FlappyFishHooks';
+import { MathRush } from './minigames/MathRush';
+import { GameResult } from './minigames/types';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -50,6 +54,7 @@ export default function App() {
   const [showEggsPanel, setShowEggsPanel] = useState(false);
   const [decorationsTab, setDecorationsTab] = useState<'store' | 'owned'>('store');
   const [currentScreen, setCurrentScreen] = useState<'home' | 'games'>('home');
+  const [activeGame, setActiveGame] = useState<string | null>(null);
   const [shopSection, setShopSection] = useState<'coins' | 'opals' | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const aquariumScrollRef = useRef<HTMLDivElement>(null);
@@ -560,6 +565,45 @@ export default function App() {
       time: 'now',
       read: false,
     }]);
+  }, []);
+
+  const handleMiniGameEnd = useCallback((result: GameResult) => {
+    setActiveGame(null);
+    
+    setGameState(prev => {
+      if (!prev || !prev.axolotl) return prev;
+      
+      // Only award XP if energy was used (energy already deducted when game started)
+      const shouldAwardXP = prev.energy < prev.maxEnergy; // Energy was used
+      
+      const newXP = shouldAwardXP ? prev.axolotl.experience + result.xp : prev.axolotl.experience;
+      const newCoins = prev.coins + result.coins;
+      const newOpals = result.opals ? (prev.opals || 0) + result.opals : prev.opals;
+      
+      // Check for evolution
+      const updatedAxolotl = {
+        ...prev.axolotl,
+        experience: newXP,
+      };
+      const evolvedAxolotl = checkEvolution(updatedAxolotl);
+      
+      // Show notification
+      setNotifications(prevNotifs => [...prevNotifs, {
+        id: `notif-${Date.now()}`,
+        type: 'milestone',
+        emoji: result.tier === 'exceptional' ? '✨' : result.tier === 'good' ? '🎉' : '🎮',
+        message: `Earned ${result.xp} XP and ${result.coins} coins!${result.opals ? ` +${result.opals} 🪬` : ''}`,
+        time: 'now',
+        read: false,
+      }]);
+      
+      return {
+        ...prev,
+        axolotl: evolvedAxolotl,
+        coins: newCoins,
+        opals: newOpals,
+      };
+    });
   }, []);
 
   const handleDiscardEgg = useCallback((eggId: string) => {
@@ -1395,7 +1439,20 @@ export default function App() {
                 <MiniGameMenu
                   onClose={() => setCurrentScreen('home')}
                   onSelectGame={(gameId) => {
-                    // Deduct energy when game is selected (1 energy per game)
+                    // Check energy before starting
+                    if (!gameState || gameState.energy <= 0) {
+                      setNotifications(prev => [...prev, {
+                        id: `notif-${Date.now()}`,
+                        type: 'milestone',
+                        emoji: '⚠️',
+                        message: 'Not enough energy! Energy regenerates over time.',
+                        time: 'now',
+                        read: false,
+                      }]);
+                      return;
+                    }
+                    
+                    // Deduct energy when game starts
                     setGameState(prev => {
                       if (!prev || prev.energy <= 0) return prev;
                       return {
@@ -1403,8 +1460,9 @@ export default function App() {
                         energy: prev.energy - 1,
                       };
                     });
-                    // Mini-game implementation will be added in Phase 3
-                    // For now, just deduct energy
+                    
+                    // Start the game
+                    setActiveGame(gameId);
                   }}
                   energy={gameState.energy}
                   maxEnergy={gameState.maxEnergy}
@@ -1470,6 +1528,28 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Mini-Games */}
+      <AnimatePresence>
+        {activeGame === 'keepey-upey' && gameState && (
+          <KeepeyUpey
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'fish-hooks' && gameState && (
+          <FlappyFishHooks
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'math-rush' && gameState && (
+          <MathRush
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
