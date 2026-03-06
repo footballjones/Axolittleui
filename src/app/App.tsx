@@ -37,6 +37,11 @@ import { INITIAL_NOTIFICATIONS, GameNotification } from './data/notifications';
 import { KeepeyUpey } from './minigames/KeepeyUpey';
 import { FlappyFishHooks } from './minigames/FlappyFishHooks';
 import { MathRush } from './minigames/MathRush';
+import { AxolotlStacker } from './minigames/AxolotlStacker';
+import { CoralCode } from './minigames/CoralCode';
+import { TreasureHuntCave } from './minigames/TreasureHuntCave';
+import { Fishing } from './minigames/Fishing';
+import { BiteTag } from './minigames/BiteTag';
 import { GameResult } from './minigames/types';
 
 export default function App() {
@@ -1545,6 +1550,36 @@ export default function App() {
         )}
         {activeGame === 'math-rush' && gameState && (
           <MathRush
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'axolotl-stacker' && gameState && (
+          <AxolotlStacker
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'coral-code' && gameState && (
+          <CoralCode
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'treasure-hunt' && gameState && (
+          <TreasureHuntCave
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'fishing' && gameState && (
+          <Fishing
+            onEnd={handleMiniGameEnd}
+            energy={gameState.energy}
+          />
+        )}
+        {activeGame === 'bite-tag' && gameState && (
+          <BiteTag
             onEnd={handleMiniGameEnd}
             energy={gameState.energy}
           />
