@@ -13,8 +13,10 @@ import {
   getXPForNextLevel,
   getCurrentLevelXP,
 } from './utils/gameLogic';
+import { createRebirthEgg, createBreedingEgg, hatchEgg, isEggReady } from './utils/eggs';
 import { loadGameState, saveGameState, getInitialGameState, generateFriendCode } from './utils/storage';
 import { BACKGROUND_COLORS, getDecorationById, DECORATIONS } from './data/decorations';
+import { GAME_CONFIG } from './config/game';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AxolotlDisplay } from './components/AxolotlDisplay';
 import { ActionButtons } from './components/ActionButtons';
@@ -31,28 +33,11 @@ import { EggsPanel } from './components/EggsPanel';
 import { DecorationsPanel } from './components/DecorationsPanel';
 import { Coins, Sparkles, Menu, X, Check, ChevronDown, ShoppingCart, Gamepad2, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-interface GameNotification {
-  id: string;
-  type: 'poke' | 'evolution' | 'gift' | 'friend' | 'milestone';
-  emoji: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-const INITIAL_NOTIFICATIONS: GameNotification[] = [
-  { id: 'n1', type: 'poke', emoji: '👉', message: 'Bubbles poked you!', time: '2m ago', read: false },
-  { id: 'n2', type: 'gift', emoji: '🎁', message: 'Coral sent you 10 coins', time: '15m ago', read: false },
-  { id: 'n3', type: 'milestone', emoji: '🏆', message: 'You reached Level 5!', time: '1h ago', read: true },
-  { id: 'n4', type: 'friend', emoji: '🤝', message: 'Nemo accepted your request', time: '3h ago', read: true },
-];
+import { INITIAL_NOTIFICATIONS, GameNotification } from './data/notifications';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [activeModal, setActiveModal] = useState<'shop' | 'social' | 'rebirth' | 'stats' | 'settings' | null>(null);
-  const [activeMiniGame, setActiveMiniGame] = useState<'bubbles' | 'feeding' | 'cleaning' | null>(null);
-  const [showMiniGameMenu, setShowMiniGameMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [showXPBar, setShowXPBar] = useState(false);
@@ -93,6 +78,19 @@ export default function App() {
   useEffect(() => {
     const loaded = loadGameState();
     if (loaded) {
+      // Ensure all new fields are initialized (migration should handle this, but double-check)
+      if (loaded.energy === undefined) {
+        loaded.energy = GAME_CONFIG.energyMax;
+      }
+      if (loaded.maxEnergy === undefined) {
+        loaded.maxEnergy = GAME_CONFIG.energyMax;
+      }
+      if (loaded.incubatorEgg === undefined) {
+        loaded.incubatorEgg = null;
+      }
+      if (loaded.nurseryEggs === undefined) {
+        loaded.nurseryEggs = [];
+      }
       setGameState(loaded);
     } else {
       setGameState(getInitialGameState());
@@ -101,7 +99,7 @@ export default function App() {
 
   // Auto-save game state
   useEffect(() => {
-    if (gameState && gameState.axolotl) {
+    if (gameState) {
       saveGameState(gameState);
     }
   }, [gameState]);
@@ -117,9 +115,18 @@ export default function App() {
         let updated = updateStats(prev.axolotl);
         updated = checkEvolution(updated);
 
+        // Energy regen (1 per hour, simplified to ~0.00028 per second)
+        const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
+        const newEnergy = Math.min(
+          prev.maxEnergy || GAME_CONFIG.energyMax,
+          (prev.energy || 0) + energyRegenRate * 5 // 5 seconds passed
+        );
+
         return {
           ...prev,
           axolotl: updated,
+          energy: Math.floor(newEnergy),
+          maxEnergy: prev.maxEnergy || GAME_CONFIG.energyMax,
         };
       });
     }, 5000); // Update every 5 seconds
@@ -151,8 +158,6 @@ export default function App() {
         y: 0, // Start at top (will animate down)
         createdAt: Date.now(),
       };
-
-      console.log('🍴 Dropping food:', newFood);
 
       return {
         ...prev,
@@ -223,12 +228,12 @@ export default function App() {
     setGameState(prev => {
       if (!prev?.axolotl) return prev;
       
-      // Water quality improves health only
+      // Water change improves water quality
       const updated = {
         ...prev.axolotl,
         stats: {
           ...prev.axolotl.stats,
-          health: Math.min(100, prev.axolotl.stats.health + 30),
+          waterQuality: Math.min(100, prev.axolotl.stats.waterQuality + 30),
         },
       };
       
@@ -239,35 +244,7 @@ export default function App() {
     });
   }, []);
 
-  const handleMiniGameEnd = useCallback((score: number, gameType: 'bubbles' | 'feeding' | 'cleaning') => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-
-      let updated = prev.axolotl;
-      const earnedCoins = Math.floor(score / 10);
-
-      switch (gameType) {
-        case 'feeding':
-          updated = feedAxolotl(updated, Math.min(100, score));
-          break;
-        case 'bubbles':
-          updated = playWithAxolotl(updated, Math.min(100, score / 2));
-          break;
-        case 'cleaning':
-          updated = cleanAquarium(updated, Math.min(100, score));
-          break;
-      }
-
-      return {
-        ...prev,
-        axolotl: updated,
-        coins: prev.coins + earnedCoins,
-      };
-    });
-
-    setActiveMiniGame(null);
-    setShowMiniGameMenu(false);
-  }, []);
+  // Mini-game handler will be implemented in Phase 1 when real games are added
 
   const handlePurchase = useCallback((decorationId: string) => {
     setGameState(prev => {
@@ -343,11 +320,26 @@ export default function App() {
       
       // Check if friend already exists
       if (prev.friends.some(f => f.id === mockFriend.id)) {
-        alert('Friend already added!');
+        setNotifications(prev => [...prev, {
+          id: `notif-${Date.now()}`,
+          type: 'friend',
+          emoji: '⚠️',
+          message: 'Friend already added!',
+          time: 'now',
+          read: false,
+        }]);
         return prev;
       }
 
-      alert(`Added ${mockFriend.name} as a friend!`);
+      setNotifications(prev => [...prev, {
+        id: `notif-${Date.now()}`,
+        type: 'friend',
+        emoji: '🤝',
+        message: `Added ${mockFriend.name} as a friend!`,
+        time: 'now',
+        read: false,
+      }]);
+      
       return {
         ...prev,
         friends: [...prev.friends, mockFriend],
@@ -362,27 +354,74 @@ export default function App() {
       const friend = prev.friends.find(f => f.id === friendId);
       if (!friend) return prev;
 
-      if (prev.axolotl.stage !== 'adult') {
-        alert('Your axolotl must be an adult to breed!');
+      if (prev.axolotl.stage !== 'adult' && prev.axolotl.stage !== 'elder') {
+        setNotifications(prev => [...prev, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '⚠️',
+          message: 'Your axolotl must be an adult or elder to breed!',
+          time: 'now',
+          read: false,
+        }]);
         return prev;
       }
 
-      // Simulate breeding
+      // Simulate breeding with friend's axolotl
       const mockParent2: Axolotl = {
         ...prev.axolotl,
         id: friendId,
         name: friend.axolotlName,
+        generation: friend.generation,
       };
 
-      const { color, pattern } = breedAxolotls(prev.axolotl, mockParent2);
+      // Create breeding egg
+      const egg = createBreedingEgg(prev.axolotl, mockParent2);
       
-      alert(`Breeding successful! Your new axolotl will inherit these traits when you rebirth.`);
-      
-      // Store breeding info for next rebirth
-      return {
-        ...prev,
-        coins: prev.coins + 50, // Bonus for breeding
-      };
+      // If incubator is empty, put egg there; otherwise add to nursery storage
+      if (!prev.incubatorEgg) {
+        setNotifications(prev => [...prev, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '🥚',
+          message: 'Breeding successful! Egg is incubating.',
+          time: 'now',
+          read: false,
+        }]);
+        
+        return {
+          ...prev,
+          incubatorEgg: egg,
+          coins: prev.coins + 50, // Bonus for breeding
+        };
+      } else {
+        // Add to nursery storage (if space available)
+        if (prev.nurseryEggs.length < GAME_CONFIG.nurserySlotsOpen) {
+          setNotifications(prev => [...prev, {
+            id: `notif-${Date.now()}`,
+            type: 'milestone',
+            emoji: '🥚',
+            message: 'Breeding successful! Egg added to nursery.',
+            time: 'now',
+            read: false,
+          }]);
+          
+          return {
+            ...prev,
+            nurseryEggs: [...prev.nurseryEggs, egg],
+            coins: prev.coins + 50,
+          };
+        } else {
+          setNotifications(prev => [...prev, {
+            id: `notif-${Date.now()}`,
+            type: 'milestone',
+            emoji: '⚠️',
+            message: 'Nursery storage is full!',
+            time: 'now',
+            read: false,
+          }]);
+          return prev;
+        }
+      }
     });
   }, []);
 
@@ -393,23 +432,180 @@ export default function App() {
       const oldAxolotl = prev.axolotl;
       const bonusCoins = oldAxolotl.generation * 10;
 
-      const newAxolotl = generateAxolotl(
-        newName,
-        oldAxolotl.generation + 1,
-        [oldAxolotl.id],
-        oldAxolotl.color,
-        oldAxolotl.pattern
-      );
+      // Elder lays egg → incubator 24h → player chooses when to hatch
+      const egg = createRebirthEgg(oldAxolotl);
 
       return {
         ...prev,
-        axolotl: newAxolotl,
+        axolotl: null, // Axolotl retires
+        incubatorEgg: egg,
         coins: prev.coins + bonusCoins,
         lineage: [...prev.lineage, oldAxolotl],
       };
     });
 
     setActiveModal(null);
+  }, []);
+
+  const handleHatchEgg = useCallback((eggId: string, name: string) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      // Check incubator first
+      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
+        if (!isEggReady(prev.incubatorEgg)) return prev; // Can't hatch until ready
+        
+        const newAxolotl = hatchEgg(prev.incubatorEgg, name);
+        
+        return {
+          ...prev,
+          axolotl: newAxolotl,
+          incubatorEgg: null,
+        };
+      }
+      
+      // Check nursery eggs
+      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
+      if (eggIndex >= 0) {
+        const egg = prev.nurseryEggs[eggIndex];
+        if (!isEggReady(egg)) return prev;
+        
+        // Move to incubator if empty, otherwise hatch directly
+        if (!prev.incubatorEgg) {
+          const newAxolotl = hatchEgg(egg, name);
+          return {
+            ...prev,
+            axolotl: newAxolotl,
+            nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
+          };
+        }
+      }
+      
+      return prev;
+    });
+  }, []);
+
+  const handleBoostEgg = useCallback((eggId: string) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      const boostCost = GAME_CONFIG.eggBoostCost;
+      if (prev.opals < boostCost) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '⚠️',
+          message: `Not enough opals! You need ${boostCost} 🪬 to boost an egg.`,
+          time: 'now',
+          read: false,
+        }]);
+        return prev;
+      }
+      
+      // Check incubator first
+      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '⚡',
+          message: 'Egg boosted! Ready to hatch instantly.',
+          time: 'now',
+          read: false,
+        }]);
+        return {
+          ...prev,
+          opals: prev.opals - boostCost,
+          incubatorEgg: {
+            ...prev.incubatorEgg,
+            incubationEndsAt: Date.now(), // Instant hatch
+          },
+        };
+      }
+      
+      // Check nursery eggs
+      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
+      if (eggIndex >= 0) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '⚡',
+          message: 'Egg boosted! Ready to hatch instantly.',
+          time: 'now',
+          read: false,
+        }]);
+        const updatedEggs = [...prev.nurseryEggs];
+        updatedEggs[eggIndex] = {
+          ...updatedEggs[eggIndex],
+          incubationEndsAt: Date.now(), // Instant hatch
+        };
+        return {
+          ...prev,
+          opals: prev.opals - boostCost,
+          nurseryEggs: updatedEggs,
+        };
+      }
+      
+      return prev;
+    });
+  }, []);
+
+  const handleGiftEgg = useCallback((eggId: string) => {
+    // For now, show a notification that this feature is coming soon
+    // In the future, this will open a friend selection modal
+    setNotifications(prev => [...prev, {
+      id: `notif-${Date.now()}`,
+      type: 'gift',
+      emoji: '🎁',
+      message: 'Gift feature coming soon! You\'ll be able to send eggs to friends.',
+      time: 'now',
+      read: false,
+    }]);
+  }, []);
+
+  const handleDiscardEgg = useCallback((eggId: string) => {
+    // Confirm before discarding
+    if (!window.confirm('Are you sure you want to discard this egg? This cannot be undone.')) {
+      return;
+    }
+    
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      // Check incubator first
+      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '🗑️',
+          message: 'Egg discarded.',
+          time: 'now',
+          read: false,
+        }]);
+        return {
+          ...prev,
+          incubatorEgg: null,
+        };
+      }
+      
+      // Check nursery eggs
+      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
+      if (eggIndex >= 0) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '🗑️',
+          message: 'Egg discarded.',
+          time: 'now',
+          read: false,
+        }]);
+        return {
+          ...prev,
+          nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
+        };
+      }
+      
+      return prev;
+    });
   }, []);
 
   const handleBuyCoins = useCallback((pack: { opals: number; coins: number }) => {
@@ -436,6 +632,62 @@ export default function App() {
     });
   }, []);
 
+  const handleBuyFilter = useCallback((filter: { id: string; name: string; coins: number; opals: number }) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      if (filter.opals > 0) {
+        if (prev.opals < filter.opals) return prev;
+        return {
+          ...prev,
+          opals: prev.opals - filter.opals,
+        };
+      } else {
+        if (prev.coins < filter.coins) return prev;
+        return {
+          ...prev,
+          coins: prev.coins - filter.coins,
+        };
+      }
+    });
+  }, []);
+
+  const handleBuyShrimp = useCallback((pack: { count: number; opals: number }) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      if (prev.opals < pack.opals) return prev;
+      return {
+        ...prev,
+        opals: prev.opals - pack.opals,
+        // TODO: Add shrimp to game state when shrimp system is implemented
+      };
+    });
+  }, []);
+
+  const handleBuyTreatment = useCallback((treatment: { id: string; name: string; opals: number }) => {
+    setGameState(prev => {
+      if (!prev?.axolotl) return prev;
+      if (prev.opals < treatment.opals) return prev;
+      
+      // Apply treatment based on type
+      const updated = { ...prev.axolotl };
+      if (treatment.id === 'treatment-water') {
+        updated.stats.waterQuality = Math.min(100, updated.stats.waterQuality + 30);
+      } else if (treatment.id === 'treatment-miracle') {
+        updated.stats.hunger = 100;
+        updated.stats.happiness = 100;
+        updated.stats.cleanliness = 100;
+        updated.stats.waterQuality = 100;
+      }
+      
+      return {
+        ...prev,
+        opals: prev.opals - treatment.opals,
+        axolotl: updated,
+      };
+    });
+  }, []);
+
   // Show welcome screen if no axolotl
   if (!gameState || !gameState.axolotl) {
     return <WelcomeScreen onStart={handleStart} />;
@@ -443,7 +695,7 @@ export default function App() {
 
   const { axolotl, coins, unlockedDecorations, customization, friends, lineage } = gameState;
   const opals = gameState.opals || 0; // Default to 0 if not set
-  const showRebirthButton = canRebirth(axolotl);
+  const showRebirthButton = axolotl ? canRebirth(axolotl) : false;
   const unreadCount = notifications.filter(n => !n.read).length;
   const hasNotifications = unreadCount > 0 || hasPendingPokes;
 
@@ -859,10 +1111,10 @@ export default function App() {
                             {[
                               { emoji: '🍤', color: 'rgba(16,185,129,0.12)', border: 'rgba(52,211,153,0.18)', title: 'Keep Your Axolotl Fed', tip: "Tap Feed to drop food pellets. Your axolotl swims up and eats them. Hunger drops over time — don't let it bottom out!" },
                               { emoji: '🎮', color: 'rgba(139,92,246,0.12)', border: 'rgba(167,139,250,0.18)', title: 'Play Mini Games', tip: 'Head to Mini Games to earn XP and coins. Each game boosts a different stat — feeding, cleaning, or happiness.' },
-                              { emoji: '🧹', color: 'rgba(14,165,233,0.12)', border: 'rgba(56,189,248,0.18)', title: 'Clean the Tank', tip: "Tap Clean to scrub algae. Dirty tanks lower health over time. Keep cleanliness above 50%." },
-                              { emoji: '💧', color: 'rgba(99,102,241,0.12)', border: 'rgba(129,140,248,0.18)', title: 'Change the Water', tip: 'Tap Water to refresh the tank and directly boost health. Do it regularly to keep your axolotl thriving.' },
-                              { emoji: '🌱', color: 'rgba(34,197,94,0.12)', border: 'rgba(74,222,128,0.18)', title: 'Evolve Through 4 Stages', tip: 'Your axolotl grows from egg → hatchling → juvenile → adult. Keep all stats high to evolve faster.' },
-                              { emoji: '✨', color: 'rgba(168,85,247,0.12)', border: 'rgba(216,180,254,0.18)', title: 'Rebirth for Bonuses', tip: 'At adult stage you can Rebirth — start a new generation with bonus coins and inherited colour traits.' },
+                              { emoji: '🧹', color: 'rgba(14,165,233,0.12)', border: 'rgba(56,189,248,0.18)', title: 'Clean the Tank', tip: "Tap Clean to scrub algae. Dirty tanks lower water quality over time. Keep cleanliness above 50%." },
+                              { emoji: '💧', color: 'rgba(99,102,241,0.12)', border: 'rgba(129,140,248,0.18)', title: 'Change the Water', tip: 'Tap Water to refresh the tank and directly boost water quality. Good water quality slows decay of other stats.' },
+                              { emoji: '🌱', color: 'rgba(34,197,94,0.12)', border: 'rgba(74,222,128,0.18)', title: 'Evolve Through 4 Stages', tip: 'Your axolotl grows from Baby → Juvenile → Adult → Elder. Keep all stats high to evolve faster. Eggs hatch into Baby at Level 1.' },
+                              { emoji: '✨', color: 'rgba(168,85,247,0.12)', border: 'rgba(216,180,254,0.18)', title: 'Rebirth for Bonuses', tip: 'At Elder stage (Level 40) you can Rebirth — start a new generation with bonus coins and inherited colour traits.' },
                               { emoji: '🛍️', color: 'rgba(245,158,11,0.12)', border: 'rgba(251,191,36,0.18)', title: 'Customize Your Tank', tip: 'Tap the Shop button in the HUD to buy decorations, plants, and filters. Unlock backgrounds with opals.' },
                               { emoji: '👥', color: 'rgba(236,72,153,0.12)', border: 'rgba(244,114,182,0.18)', title: 'Play with Friends', tip: 'Add friends via code in Social. Poke them, visit their tanks, or hatch eggs together.' },
                             ].map((item, i) => (
@@ -910,7 +1162,16 @@ export default function App() {
                     {/* ── Eggs sub-panel overlay ── */}
                     <AnimatePresence>
                       {showEggsPanel && (
-                        <EggsPanel onClose={() => setShowEggsPanel(false)} />
+                        <EggsPanel 
+                          onClose={() => setShowEggsPanel(false)}
+                          incubatorEgg={gameState?.incubatorEgg || null}
+                          nurseryEggs={gameState?.nurseryEggs || []}
+                          onHatch={handleHatchEgg}
+                          onBoost={handleBoostEgg}
+                          onGift={handleGiftEgg}
+                          onDiscard={handleDiscardEgg}
+                          opals={opals}
+                        />
                       )}
                     </AnimatePresence>
 
@@ -1134,9 +1395,19 @@ export default function App() {
                 <MiniGameMenu
                   onClose={() => setCurrentScreen('home')}
                   onSelectGame={(gameId) => {
-                    // TODO: Start the selected game
-                    console.log('Selected game:', gameId);
+                    // Deduct energy when game is selected (1 energy per game)
+                    setGameState(prev => {
+                      if (!prev || prev.energy <= 0) return prev;
+                      return {
+                        ...prev,
+                        energy: prev.energy - 1,
+                      };
+                    });
+                    // Mini-game implementation will be added in Phase 3
+                    // For now, just deduct energy
                   }}
+                  energy={gameState.energy}
+                  maxEnergy={gameState.maxEnergy}
                 />
               </div>
             )}
@@ -1156,6 +1427,9 @@ export default function App() {
           equippedDecorations={customization.decorations}
           onBuyCoins={handleBuyCoins}
           onBuyOpals={handleBuyOpals}
+          onBuyFilter={handleBuyFilter}
+          onBuyShrimp={handleBuyShrimp}
+          onBuyTreatment={handleBuyTreatment}
           initialSection={shopSection}
         />
       )}

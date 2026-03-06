@@ -14,8 +14,6 @@ export function FoodDisplay({ food }: FoodDisplayProps) {
     wiggleDuration: 0.8 + Math.random() * 0.4, // 0.8-1.2 second wiggle
   }), []);
 
-  console.log('🐛 Rendering food:', food.id, 'at x:', food.x);
-
   return (
     <motion.div
       className="absolute"

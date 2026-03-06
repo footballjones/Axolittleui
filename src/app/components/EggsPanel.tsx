@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, X, Lock } from 'lucide-react';
+import { Egg } from '../types/game';
+import { isEggReady } from '../utils/eggs';
+import { GAME_CONFIG } from '../config/game';
 
-interface Egg {
+interface DisplayEgg {
   id: string;
   name: string;
   color: string;
@@ -15,52 +18,8 @@ interface Egg {
   rarityBorder: string;
   rarityText: string;
   glowColor: string;
+  egg: Egg; // Reference to actual egg
 }
-
-const MOCK_EGGS: Egg[] = [
-  {
-    id: 'egg-1',
-    name: 'Speckled Egg',
-    color: '#c084fc',
-    generation: 2,
-    parentName: 'Bubbles',
-    hatchesIn: '2h 14m',
-    emoji: '🥚',
-    rarity: 'Rare',
-    rarityColor: 'rgba(168,85,247,0.18)',
-    rarityBorder: 'rgba(168,85,247,0.45)',
-    rarityText: 'text-violet-600',
-    glowColor: 'rgba(192,132,252,0.55)',
-  },
-  {
-    id: 'egg-2',
-    name: 'Shimmer Egg',
-    color: '#67e8f9',
-    generation: 1,
-    parentName: 'Axie',
-    hatchesIn: '5h 40m',
-    emoji: '🫧',
-    rarity: 'Common',
-    rarityColor: 'rgba(56,189,248,0.15)',
-    rarityBorder: 'rgba(56,189,248,0.38)',
-    rarityText: 'text-sky-600',
-    glowColor: 'rgba(103,232,249,0.5)',
-  },
-  {
-    id: 'egg-3',
-    name: 'Golden Egg',
-    color: '#fbbf24',
-    generation: 3,
-    parentName: 'Coral',
-    hatchesIn: 'Ready!',
-    emoji: '✨',
-    rarity: 'Legendary',
-    rarityColor: 'rgba(245,158,11,0.2)',
-    rarityBorder: 'rgba(245,158,11,0.5)',
-    rarityText: 'text-amber-600',
-    glowColor: 'rgba(251,191,36,0.65)',
-  },
-];
 
 // Row 1 (indices 0-2): eggs fill these, rest empty
 // Row 2 (indices 3-5): all empty/unlocked
@@ -68,16 +27,115 @@ const MOCK_EGGS: Egg[] = [
 const UNLOCKED_SLOTS = 6;
 const TOTAL_SLOTS = 18;
 
-interface Props {
-  onClose: () => void;
+function formatTimeRemaining(incubationEndsAt: number): string {
+  const now = Date.now();
+  const remaining = incubationEndsAt - now;
+  
+  if (remaining <= 0) return 'Ready!';
+  
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
 }
 
-export function EggsPanel({ onClose }: Props) {
-  const [selectedEgg, setSelectedEgg] = useState<Egg | null>(null);
+function getRarityStyle(rarity: 'Common' | 'Rare' | 'Legendary') {
+  switch (rarity) {
+    case 'Legendary':
+      return {
+        rarityColor: 'rgba(245,158,11,0.2)',
+        rarityBorder: 'rgba(245,158,11,0.5)',
+        rarityText: 'text-amber-600',
+        glowColor: 'rgba(251,191,36,0.65)',
+        emoji: '✨',
+      };
+    case 'Rare':
+      return {
+        rarityColor: 'rgba(168,85,247,0.18)',
+        rarityBorder: 'rgba(168,85,247,0.45)',
+        rarityText: 'text-violet-600',
+        glowColor: 'rgba(192,132,252,0.55)',
+        emoji: '🥚',
+      };
+    default:
+      return {
+        rarityColor: 'rgba(56,189,248,0.15)',
+        rarityBorder: 'rgba(56,189,248,0.38)',
+        rarityText: 'text-sky-600',
+        glowColor: 'rgba(103,232,249,0.5)',
+        emoji: '🫧',
+      };
+  }
+}
+
+interface Props {
+  onClose: () => void;
+  incubatorEgg: Egg | null;
+  nurseryEggs: Egg[];
+  onHatch?: (eggId: string, name: string) => void;
+  onBoost?: (eggId: string) => void;
+  onGift?: (eggId: string) => void;
+  onDiscard?: (eggId: string) => void;
+  opals?: number;
+}
+
+export function EggsPanel({ 
+  onClose, 
+  incubatorEgg, 
+  nurseryEggs,
+  onHatch,
+  onBoost,
+  onGift,
+  onDiscard,
+  opals = 0,
+}: Props) {
+  const [selectedEgg, setSelectedEgg] = useState<DisplayEgg | null>(null);
   const [showUnlockToast, setShowUnlockToast] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
 
-  const eggs = MOCK_EGGS;
+  // Convert real eggs to display format
+  const displayEggs = useMemo(() => {
+    const allEggs: DisplayEgg[] = [];
+    
+    // Add incubator egg first if present
+    if (incubatorEgg) {
+      const style = getRarityStyle(incubatorEgg.rarity);
+      allEggs.push({
+        id: incubatorEgg.id,
+        name: `${incubatorEgg.rarity} Egg`,
+        color: incubatorEgg.color,
+        generation: incubatorEgg.generation,
+        parentName: `Gen ${incubatorEgg.generation - 1}`,
+        hatchesIn: formatTimeRemaining(incubatorEgg.incubationEndsAt),
+        emoji: style.emoji,
+        rarity: incubatorEgg.rarity,
+        ...style,
+        egg: incubatorEgg,
+      });
+    }
+    
+    // Add nursery eggs
+    nurseryEggs.forEach(egg => {
+      const style = getRarityStyle(egg.rarity);
+      allEggs.push({
+        id: egg.id,
+        name: `${egg.rarity} Egg`,
+        color: egg.color,
+        generation: egg.generation,
+        parentName: `Gen ${egg.generation - 1}`,
+        hatchesIn: formatTimeRemaining(egg.incubationEndsAt),
+        emoji: style.emoji,
+        rarity: egg.rarity,
+        ...style,
+        egg,
+      });
+    });
+    
+    return allEggs;
+  }, [incubatorEgg, nurseryEggs]);
 
   const handleUnlockSlot = () => {
     setShowUnlockToast(true);
@@ -109,7 +167,7 @@ export function EggsPanel({ onClose }: Props) {
         <div className="flex-1">
           <h3 className="text-violet-800 font-bold text-base">Egg Incubator</h3>
           <p className="text-[10px] text-violet-500/80 font-medium">
-            {eggs.length}/{UNLOCKED_SLOTS} slots · {eggs.filter(e => e.hatchesIn === 'Ready!').length} ready
+            {displayEggs.length}/{UNLOCKED_SLOTS} slots · {displayEggs.filter(e => e.hatchesIn === 'Ready!').length} ready
           </p>
         </div>
       </div>
@@ -146,13 +204,13 @@ export function EggsPanel({ onClose }: Props) {
                 return <LockedSlot key={i} onUnlock={handleUnlockSlot} />;
               }
               // Rows 1–2 are unlocked; fill with eggs where available
-              const egg = eggs[i] ?? null;
+              const displayEgg = displayEggs[i] ?? null;
               return (
                 <EggSlot
                   key={i}
                   slotIndex={i}
-                  egg={egg}
-                  onSelect={() => egg && setSelectedEgg(egg)}
+                  egg={displayEgg}
+                  onSelect={() => displayEgg && setSelectedEgg(displayEgg)}
                 />
               );
             })}
@@ -289,6 +347,13 @@ export function EggsPanel({ onClose }: Props) {
                 <div className="grid grid-cols-2 gap-2.5">
                   {/* Hatch / Watch */}
                   <motion.button
+                    onClick={() => {
+                      if (selectedEgg.hatchesIn === 'Ready!' && onHatch) {
+                        // Use default name for now (can be enhanced with name input modal later)
+                        onHatch(selectedEgg.egg.id, `${selectedEgg.rarity} Axolotl`);
+                        setSelectedEgg(null);
+                      }
+                    }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
                     style={
                       selectedEgg.hatchesIn === 'Ready!'
@@ -296,6 +361,7 @@ export function EggsPanel({ onClose }: Props) {
                         : { background: 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)', border: '1px solid rgba(148,163,184,0.35)' }
                     }
                     whileTap={{ scale: 0.92 }}
+                    disabled={selectedEgg.hatchesIn !== 'Ready!'}
                   >
                     <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                     <span className="text-[1.6rem]">{selectedEgg.hatchesIn === 'Ready!' ? '🐣' : '👀'}</span>
@@ -309,21 +375,43 @@ export function EggsPanel({ onClose }: Props) {
 
                   {/* Boost */}
                   <motion.button
+                    onClick={() => {
+                      const boostCost = GAME_CONFIG.eggBoostCost;
+                      if (onBoost && opals >= boostCost) {
+                        onBoost(selectedEgg.egg.id);
+                        setSelectedEgg(null);
+                      }
+                    }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
-                    style={{ background: 'linear-gradient(135deg, rgba(216,180,254,0.75) 0%, rgba(192,132,252,0.6) 100%)', border: '1px solid rgba(168,85,247,0.4)' }}
+                    style={{ 
+                      background: opals >= GAME_CONFIG.eggBoostCost
+                        ? 'linear-gradient(135deg, rgba(216,180,254,0.75) 0%, rgba(192,132,252,0.6) 100%)' 
+                        : 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)',
+                      border: opals >= GAME_CONFIG.eggBoostCost
+                        ? '1px solid rgba(168,85,247,0.4)' 
+                        : '1px solid rgba(148,163,184,0.35)',
+                    }}
                     whileTap={{ scale: 0.92 }}
+                    disabled={!onBoost || opals < GAME_CONFIG.eggBoostCost}
                   >
                     <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                     <span className="text-[1.6rem]">⚡</span>
-                    <span className="text-[10px] font-black tracking-wider uppercase text-violet-700">Boost</span>
-                    <span className="text-[9px] text-violet-500">3 🪬 opals</span>
+                    <span className={`text-[10px] font-black tracking-wider uppercase ${opals >= GAME_CONFIG.eggBoostCost ? 'text-violet-700' : 'text-slate-500'}`}>Boost</span>
+                    <span className={`text-[9px] ${opals >= GAME_CONFIG.eggBoostCost ? 'text-violet-500' : 'text-slate-400'}`}>{GAME_CONFIG.eggBoostCost} 🪬 opals</span>
                   </motion.button>
 
                   {/* Gift */}
                   <motion.button
+                    onClick={() => {
+                      if (onGift) {
+                        onGift(selectedEgg.egg.id);
+                        setSelectedEgg(null);
+                      }
+                    }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
                     style={{ background: 'linear-gradient(135deg, rgba(251,207,232,0.75) 0%, rgba(249,168,212,0.6) 100%)', border: '1px solid rgba(244,114,182,0.35)' }}
                     whileTap={{ scale: 0.92 }}
+                    disabled={!onGift}
                   >
                     <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                     <span className="text-[1.6rem]">🎁</span>
@@ -333,9 +421,16 @@ export function EggsPanel({ onClose }: Props) {
 
                   {/* Discard */}
                   <motion.button
+                    onClick={() => {
+                      if (onDiscard) {
+                        onDiscard(selectedEgg.egg.id);
+                        setSelectedEgg(null);
+                      }
+                    }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
                     style={{ background: 'linear-gradient(135deg, rgba(254,202,202,0.65) 0%, rgba(252,165,165,0.5) 100%)', border: '1px solid rgba(248,113,113,0.3)' }}
                     whileTap={{ scale: 0.92 }}
+                    disabled={!onDiscard}
                   >
                     <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                     <span className="text-[1.6rem]">🗑️</span>
@@ -368,7 +463,7 @@ export function EggsPanel({ onClose }: Props) {
 }
 
 /* ── Individual egg slot ── */
-function EggSlot({ slotIndex, egg, onSelect }: { slotIndex: number; egg: Egg | null; onSelect: () => void }) {
+function EggSlot({ slotIndex, egg, onSelect }: { slotIndex: number; egg: DisplayEgg | null; onSelect: () => void }) {
   const isReady = egg?.hatchesIn === 'Ready!';
 
   if (!egg) {

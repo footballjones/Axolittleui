@@ -10,7 +10,7 @@ interface ShopModalProps {
   onBuyCoins: (pack: { opals: number; coins: number }) => void;
   onBuyOpals: (pack: { price: string; opals: number }) => void;
   onBuyShrimp?: (pack: { count: number; opals: number }) => void;
-  onBuyFilter?: (filter: { id: string; name: string; coins: number }) => void;
+  onBuyFilter?: (filter: { id: string; name: string; coins: number; opals: number }) => void;
   onBuyTreatment?: (treatment: { id: string; name: string; opals: number }) => void;
   initialSection?: 'coins' | 'opals' | null;
 }
@@ -37,9 +37,9 @@ const SHRIMP_PACKS = [
 ];
 
 const FILTER_OPTIONS = [
-  { id: 'filter-basic', name: 'Basic Filter', coins: 100, emoji: '⚙️', description: 'Slow but steady filtration' },
-  { id: 'filter-advanced', name: 'Advanced Filter', coins: 300, emoji: '🔧', description: 'Faster, cleaner water' },
-  { id: 'filter-premium', name: 'Premium Filter', coins: 600, emoji: '✨', description: 'Crystal-clear perfection' },
+  { id: 'filter-basic', name: 'Basic Filter', coins: 100, opals: 0, emoji: '⚙️', description: 'Slow but steady filtration' },
+  { id: 'filter-advanced', name: 'Advanced Filter', coins: 300, opals: 0, emoji: '🔧', description: 'Faster, cleaner water' },
+  { id: 'filter-premium', name: 'Premium Filter', coins: 0, opals: 50, emoji: '✨', description: 'Crystal-clear perfection' },
 ];
 
 const TREATMENT_OPTIONS = [
@@ -452,29 +452,35 @@ export function ShopModal({
                 onInfo={() => setInfoModal('filters')}
               />
               <div className="space-y-1.5">
-                {FILTER_OPTIONS.map((filter, i) => (
-                  <ShopRowTile
-                    key={filter.id}
-                    index={i}
-                    onClick={() => onBuyFilter?.(filter)}
-                    disabled={!canAfford(filter.coins)}
-                    cardBg="linear-gradient(135deg, rgba(255,255,255,0.88) 0%, rgba(240,249,255,0.85) 100%)"
-                    cardBorder="1.5px solid rgba(186,230,253,0.6)"
-                    emoji={filter.emoji}
-                    title={filter.name}
-                    subtitle={filter.description}
-                    priceContent={
-                      <PriceBadge
-                        bg={canAfford(filter.coins) ? 'linear-gradient(135deg, #38bdf8, #2563eb)' : 'rgba(216,180,254,0.3)'}
-                        border="none"
-                        shadow={canAfford(filter.coins) ? '0 3px 10px rgba(56,189,248,0.3)' : 'none'}
-                        icon={Coins}
-                        value={filter.coins}
-                        textColor={canAfford(filter.coins) ? '#fff' : 'rgba(139,92,246,0.4)'}
-                      />
-                    }
-                  />
-                ))}
+                {FILTER_OPTIONS.map((filter, i) => {
+                  const usesOpals = filter.opals > 0;
+                  const canAffordFilter = usesOpals ? canAffordOpals(filter.opals) : canAfford(filter.coins);
+                  const filterCost = usesOpals ? filter.opals : filter.coins;
+                  
+                  return (
+                    <ShopRowTile
+                      key={filter.id}
+                      index={i}
+                      onClick={() => onBuyFilter?.(filter)}
+                      disabled={!canAffordFilter}
+                      cardBg="linear-gradient(135deg, rgba(255,255,255,0.88) 0%, rgba(240,249,255,0.85) 100%)"
+                      cardBorder="1.5px solid rgba(186,230,253,0.6)"
+                      emoji={filter.emoji}
+                      title={filter.name}
+                      subtitle={filter.description}
+                      priceContent={
+                        <PriceBadge
+                          bg={canAffordFilter ? (usesOpals ? 'linear-gradient(135deg, #f472b6, #e11d48)' : 'linear-gradient(135deg, #38bdf8, #2563eb)') : 'rgba(216,180,254,0.3)'}
+                          border="none"
+                          shadow={canAffordFilter ? (usesOpals ? '0 3px 10px rgba(244,114,182,0.3)' : '0 3px 10px rgba(56,189,248,0.3)') : 'none'}
+                          icon={usesOpals ? Sparkles : Coins}
+                          value={filterCost}
+                          textColor={canAffordFilter ? '#fff' : 'rgba(139,92,246,0.4)'}
+                        />
+                      }
+                    />
+                  );
+                })}
               </div>
             </div>
 

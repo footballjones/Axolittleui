@@ -4,7 +4,7 @@ export interface AxolotlStats {
   hunger: number; // 0-100
   happiness: number; // 0-100
   cleanliness: number; // 0-100
-  health: number; // 0-100
+  waterQuality: number; // 0-100 (acts as multiplier on other stats)
 }
 
 export interface SecondaryStats {
@@ -12,6 +12,11 @@ export interface SecondaryStats {
   intellect: number; // 0-100
   stamina: number; // 0-100
   speed: number; // 0-100
+}
+
+export interface RecessiveGenes {
+  color?: string;
+  pattern?: string;
 }
 
 export interface Axolotl {
@@ -28,6 +33,7 @@ export interface Axolotl {
   parentIds: string[];
   birthDate: number;
   lastUpdated: number;
+  recessiveGenes?: RecessiveGenes; // Hidden traits that can manifest on rebirth/breeding
 }
 
 export interface DecorationItem {
@@ -43,15 +49,29 @@ export interface AquariumCustomization {
   decorations: string[]; // decoration IDs
 }
 
+export interface Egg {
+  id: string;
+  parentIds: string[];
+  generation: number;
+  incubationEndsAt: number; // timestamp when ready to hatch
+  color: string; // from genetics (may include recessive expression)
+  pattern: string; // from genetics (may include recessive expression)
+  rarity: 'Common' | 'Rare' | 'Legendary';
+}
+
 export interface GameState {
   axolotl: Axolotl | null;
   coins: number;
   opals: number;
+  energy: number;
+  maxEnergy: number;
   unlockedDecorations: string[];
   customization: AquariumCustomization;
   lineage: Axolotl[]; // previous generations
   friends: Friend[];
   foodItems: FoodItem[];
+  incubatorEgg: Egg | null; // 1 slot for active hatching
+  nurseryEggs: Egg[]; // Storage: 6 open, 18 locked (purchase with Opals)
 }
 
 export interface Friend {
@@ -73,4 +93,29 @@ export interface FoodItem {
   x: number; // position as percentage (0-100)
   y: number; // position as percentage (0-100)
   createdAt: number;
+}
+
+export interface Egg {
+  id: string;
+  parentIds: string[];
+  generation: number;
+  incubationEndsAt: number; // timestamp when ready to hatch
+  color: string; // from genetics (may include recessive expression)
+  pattern: string; // from genetics (may include recessive expression)
+  rarity: 'Common' | 'Rare' | 'Legendary';
+}
+
+export interface GameState {
+  axolotl: Axolotl | null;
+  coins: number;
+  opals: number;
+  energy: number;
+  maxEnergy: number;
+  unlockedDecorations: string[];
+  customization: AquariumCustomization;
+  lineage: Axolotl[]; // previous generations
+  friends: Friend[];
+  foodItems: FoodItem[];
+  incubatorEgg: Egg | null; // 1 slot for active hatching
+  nurseryEggs: Egg[]; // Storage: 6 open, 18 locked (purchase with Opals)
 }

@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 interface MiniGameMenuProps {
   onClose?: () => void;
   onSelectGame: (gameId: string) => void;
+  energy?: number;
+  maxEnergy?: number;
 }
 
 interface GameTileProps {
@@ -28,8 +30,9 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
       className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-900/5 overflow-hidden"
     >
       <button
-        onClick={() => onSelectGame(game.id)}
-        className="w-full p-3 text-left group active:bg-white/20 transition-colors"
+        onClick={() => energy > 0 && onSelectGame(game.id)}
+        disabled={energy <= 0}
+        className={`w-full p-3 text-left group transition-colors ${energy > 0 ? 'active:bg-white/20 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
       >
         <div className="flex flex-col items-center text-center gap-1.5">
           <div className={`bg-gradient-to-br ${game.color} rounded-xl w-11 h-11 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
@@ -105,15 +108,13 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
   );
 }
 
-export function MiniGameMenu({ onClose, onSelectGame }: MiniGameMenuProps) {
+export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10 }: MiniGameMenuProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const toggleInfo = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
-  const energy = 7;
-  const maxEnergy = 10;
   const energyPercent = (energy / maxEnergy) * 100;
 
   const soloGames = [
@@ -277,7 +278,9 @@ export function MiniGameMenu({ onClose, onSelectGame }: MiniGameMenuProps) {
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       >
         <p className="text-xs text-white/90 text-center font-medium">
-          💡 Playing mini-games earns coins and boosts your axolotl's stats!
+          {energy <= 0 
+            ? '⚡ Energy regenerates over time. Come back later to play more games!'
+            : '💡 Playing mini-games earns coins and boosts your axolotl\'s stats!'}
         </p>
       </motion.div>
     </div>

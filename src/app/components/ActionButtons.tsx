@@ -77,7 +77,7 @@ export function ActionButtons({
       fillColor: 'from-indigo-400 via-sky-400 to-blue-300',
       glowColor: 'rgba(165,180,252,0.45)',
       disabled: false,
-      value: stats.health,
+      value: stats.waterQuality,
       smallIcon: true,
     },
   ];
