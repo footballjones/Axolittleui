@@ -131,5 +131,8 @@ export function getInitialGameState(): GameState {
     foodItems: [],
     incubatorEgg: null,
     nurseryEggs: [],
+    filterTier: undefined,
+    shrimpCount: 0,
+    lastShrimpUpdate: undefined,
   };
 }

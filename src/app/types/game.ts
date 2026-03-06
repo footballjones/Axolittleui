@@ -72,6 +72,9 @@ export interface GameState {
   foodItems: FoodItem[];
   incubatorEgg: Egg | null; // 1 slot for active hatching
   nurseryEggs: Egg[]; // Storage: 6 open, 18 locked (purchase with Opals)
+  filterTier?: string; // 'filter-basic' | 'filter-advanced' | 'filter-premium'
+  shrimpCount?: number; // Number of shrimp in tank (vacation mechanic)
+  lastShrimpUpdate?: number; // Timestamp of last shrimp consumption
 }
 
 export interface Friend {
@@ -93,29 +96,4 @@ export interface FoodItem {
   x: number; // position as percentage (0-100)
   y: number; // position as percentage (0-100)
   createdAt: number;
-}
-
-export interface Egg {
-  id: string;
-  parentIds: string[];
-  generation: number;
-  incubationEndsAt: number; // timestamp when ready to hatch
-  color: string; // from genetics (may include recessive expression)
-  pattern: string; // from genetics (may include recessive expression)
-  rarity: 'Common' | 'Rare' | 'Legendary';
-}
-
-export interface GameState {
-  axolotl: Axolotl | null;
-  coins: number;
-  opals: number;
-  energy: number;
-  maxEnergy: number;
-  unlockedDecorations: string[];
-  customization: AquariumCustomization;
-  lineage: Axolotl[]; // previous generations
-  friends: Friend[];
-  foodItems: FoodItem[];
-  incubatorEgg: Egg | null; // 1 slot for active hatching
-  nurseryEggs: Egg[]; // Storage: 6 open, 18 locked (purchase with Opals)
 }

@@ -12,6 +12,7 @@ import {
   calculateLevel,
   getXPForNextLevel,
   getCurrentLevelXP,
+  updateShrimp,
 } from './utils/gameLogic';
 import { createRebirthEgg, createBreedingEgg, hatchEgg, isEggReady } from './utils/eggs';
 import { loadGameState, saveGameState, getInitialGameState, generateFriendCode } from './utils/storage';
@@ -43,24 +44,76 @@ import { TreasureHuntCave } from './minigames/TreasureHuntCave';
 import { Fishing } from './minigames/Fishing';
 import { BiteTag } from './minigames/BiteTag';
 import { GameResult } from './minigames/types';
+import { useGameActions } from './hooks/useGameActions';
+import { useMenuState } from './hooks/useMenuState';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [activeModal, setActiveModal] = useState<'shop' | 'social' | 'rebirth' | 'stats' | 'settings' | null>(null);
-  const [showInfo, setShowInfo] = useState(false);
-  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
-  const [showXPBar, setShowXPBar] = useState(false);
   const [hasPendingPokes, setHasPendingPokes] = useState(true);
   const [notifications, setNotifications] = useState<GameNotification[]>(INITIAL_NOTIFICATIONS);
   const [notificationsExpanded, setNotificationsExpanded] = useState(true);
-  const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [showHowToPlayPanel, setShowHowToPlayPanel] = useState(false);
-  const [showInventoryPanel, setShowInventoryPanel] = useState(false);
-  const [showEggsPanel, setShowEggsPanel] = useState(false);
-  const [decorationsTab, setDecorationsTab] = useState<'store' | 'owned'>('store');
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'games'>('home');
-  const [activeGame, setActiveGame] = useState<string | null>(null);
-  const [shopSection, setShopSection] = useState<'coins' | 'opals' | null>(null);
+  
+  // Menu state from hook
+  const menuState = useMenuState();
+  const {
+    activeModal,
+    setActiveModal,
+    showInfo,
+    setShowInfo,
+    showHamburgerMenu,
+    setShowHamburgerMenu,
+    showXPBar,
+    setShowXPBar,
+    showNotifPanel,
+    setShowNotifPanel,
+    showHowToPlayPanel,
+    setShowHowToPlayPanel,
+    showInventoryPanel,
+    setShowInventoryPanel,
+    showEggsPanel,
+    setShowEggsPanel,
+    decorationsTab,
+    setDecorationsTab,
+    currentScreen,
+    setCurrentScreen,
+    activeGame,
+    setActiveGame,
+    shopSection,
+    setShopSection,
+    closeAllPanels,
+  } = menuState;
+  
+  // Game actions from hook
+  const gameActions = useGameActions({
+    gameState,
+    setGameState,
+    setNotifications,
+    setActiveModal,
+    setActiveGame,
+  });
+  
+  const {
+    handleFeed,
+    handleEatFood,
+    handlePlay,
+    handleClean,
+    handleWaterChange,
+    handlePurchase,
+    handleEquipDecoration,
+    handleAddFriend,
+    handleBreed,
+    handleRebirth,
+    handleHatchEgg,
+    handleBoostEgg,
+    handleGiftEgg,
+    handleDiscardEgg,
+    handleMiniGameEnd,
+    handleBuyCoins,
+    handleBuyOpals,
+    handleBuyFilter,
+    handleBuyShrimp,
+    handleBuyTreatment,
+  } = gameActions;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const aquariumScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollHint, setShowScrollHint] = useState(true);
@@ -122,21 +175,25 @@ export default function App() {
       setGameState(prev => {
         if (!prev?.axolotl) return prev;
         
-        let updated = updateStats(prev.axolotl);
+        // Update shrimp consumption first
+        const stateWithUpdatedShrimp = updateShrimp(prev);
+        
+        // Update stats (pass gameState for shrimp effects)
+        let updated = updateStats(prev.axolotl, stateWithUpdatedShrimp);
         updated = checkEvolution(updated);
 
         // Energy regen (1 per hour, simplified to ~0.00028 per second)
         const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
         const newEnergy = Math.min(
-          prev.maxEnergy || GAME_CONFIG.energyMax,
-          (prev.energy || 0) + energyRegenRate * 5 // 5 seconds passed
+          stateWithUpdatedShrimp.maxEnergy || GAME_CONFIG.energyMax,
+          (stateWithUpdatedShrimp.energy || 0) + energyRegenRate * 5 // 5 seconds passed
         );
 
         return {
-          ...prev,
+          ...stateWithUpdatedShrimp,
           axolotl: updated,
           energy: Math.floor(newEnergy),
-          maxEnergy: prev.maxEnergy || GAME_CONFIG.energyMax,
+          maxEnergy: stateWithUpdatedShrimp.maxEnergy || GAME_CONFIG.energyMax,
         };
       });
     }, 5000); // Update every 5 seconds
@@ -152,590 +209,7 @@ export default function App() {
     }));
   }, []);
 
-  const handleFeed = useCallback(() => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-
-      // Don't drop food if hunger is at 100
-      if (prev.axolotl.stats.hunger >= 100) {
-        return prev;
-      }
-
-      // Drop food at a random x position at the TOP
-      const newFood: FoodItem = {
-        id: `food-${Date.now()}`,
-        x: Math.random() * 80 + 10, // 10-90% from left
-        y: 0, // Start at top (will animate down)
-        createdAt: Date.now(),
-      };
-
-      return {
-        ...prev,
-        foodItems: [...(prev.foodItems || []), newFood],
-      };
-    });
-    
-    // After animation time (5 seconds), update food position to settled
-    setTimeout(() => {
-      setGameState(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          foodItems: (prev.foodItems || []).map(f => 
-            f.y === 0 ? { ...f, y: 75 } : f
-          ),
-        };
-      });
-    }, 5000); // Match the maximum animation duration
-  }, []);
-
-  const handleEatFood = useCallback((foodId: string) => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-
-      // Remove the food
-      const foodItems = (prev.foodItems || []).filter(f => f.id !== foodId);
-
-      // Increase hunger
-      const updated = feedAxolotl(prev.axolotl, 15);
-
-      return {
-        ...prev,
-        axolotl: updated,
-        foodItems,
-      };
-    });
-  }, []);
-
-  const handlePlay = useCallback(() => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-      const updated = playWithAxolotl(prev.axolotl, 20);
-      return { ...prev, axolotl: updated };
-    });
-  }, []);
-
-  const handleClean = useCallback(() => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-      
-      const updated = {
-        ...prev.axolotl,
-        stats: {
-          ...prev.axolotl.stats,
-          cleanliness: Math.min(100, prev.axolotl.stats.cleanliness + 35),
-        },
-      };
-      
-      return {
-        ...prev,
-        axolotl: updated,
-      };
-    });
-  }, []);
-
-  const handleWaterChange = useCallback(() => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-      
-      // Water change improves water quality
-      const updated = {
-        ...prev.axolotl,
-        stats: {
-          ...prev.axolotl.stats,
-          waterQuality: Math.min(100, prev.axolotl.stats.waterQuality + 30),
-        },
-      };
-      
-      return {
-        ...prev,
-        axolotl: updated,
-      };
-    });
-  }, []);
-
-  // Mini-game handler will be implemented in Phase 1 when real games are added
-
-  const handlePurchase = useCallback((decorationId: string) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-
-      const decoration = getDecorationById(decorationId);
-      if (!decoration || prev.coins < decoration.cost) return prev;
-
-      return {
-        ...prev,
-        coins: prev.coins - decoration.cost,
-        unlockedDecorations: [...prev.unlockedDecorations, decorationId],
-      };
-    });
-  }, []);
-
-  const handleEquipDecoration = useCallback((decorationId: string) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-
-      const decoration = getDecorationById(decorationId);
-      if (!decoration) return prev;
-
-      if (decoration.type === 'background') {
-        return {
-          ...prev,
-          customization: {
-            ...prev.customization,
-            background: BACKGROUND_COLORS[decorationId] || prev.customization.background,
-          },
-        };
-      }
-
-      // Toggle decoration
-      const isEquipped = prev.customization.decorations.includes(decorationId);
-      const maxDecorations = 5;
-
-      if (isEquipped) {
-        return {
-          ...prev,
-          customization: {
-            ...prev.customization,
-            decorations: prev.customization.decorations.filter(id => id !== decorationId),
-          },
-        };
-      } else if (prev.customization.decorations.length < maxDecorations) {
-        return {
-          ...prev,
-          customization: {
-            ...prev.customization,
-            decorations: [...prev.customization.decorations, decorationId],
-          },
-        };
-      }
-
-      return prev;
-    });
-  }, []);
-
-  const handleAddFriend = useCallback((code: string) => {
-    // Simulate adding a friend (in a real app, this would connect to backend)
-    const mockFriend: Friend = {
-      id: `friend-${Date.now()}`,
-      name: code.split('-')[0],
-      axolotlName: 'Mystery Axo',
-      stage: 'adult',
-      generation: parseInt(code.split('-')[1]?.[0] || '1'),
-      lastSync: Date.now(),
-    };
-
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      // Check if friend already exists
-      if (prev.friends.some(f => f.id === mockFriend.id)) {
-        setNotifications(prev => [...prev, {
-          id: `notif-${Date.now()}`,
-          type: 'friend',
-          emoji: '⚠️',
-          message: 'Friend already added!',
-          time: 'now',
-          read: false,
-        }]);
-        return prev;
-      }
-
-      setNotifications(prev => [...prev, {
-        id: `notif-${Date.now()}`,
-        type: 'friend',
-        emoji: '🤝',
-        message: `Added ${mockFriend.name} as a friend!`,
-        time: 'now',
-        read: false,
-      }]);
-      
-      return {
-        ...prev,
-        friends: [...prev.friends, mockFriend],
-      };
-    });
-  }, []);
-
-  const handleBreed = useCallback((friendId: string) => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-
-      const friend = prev.friends.find(f => f.id === friendId);
-      if (!friend) return prev;
-
-      if (prev.axolotl.stage !== 'adult' && prev.axolotl.stage !== 'elder') {
-        setNotifications(prev => [...prev, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '⚠️',
-          message: 'Your axolotl must be an adult or elder to breed!',
-          time: 'now',
-          read: false,
-        }]);
-        return prev;
-      }
-
-      // Simulate breeding with friend's axolotl
-      const mockParent2: Axolotl = {
-        ...prev.axolotl,
-        id: friendId,
-        name: friend.axolotlName,
-        generation: friend.generation,
-      };
-
-      // Create breeding egg
-      const egg = createBreedingEgg(prev.axolotl, mockParent2);
-      
-      // If incubator is empty, put egg there; otherwise add to nursery storage
-      if (!prev.incubatorEgg) {
-        setNotifications(prev => [...prev, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '🥚',
-          message: 'Breeding successful! Egg is incubating.',
-          time: 'now',
-          read: false,
-        }]);
-        
-        return {
-          ...prev,
-          incubatorEgg: egg,
-          coins: prev.coins + 50, // Bonus for breeding
-        };
-      } else {
-        // Add to nursery storage (if space available)
-        if (prev.nurseryEggs.length < GAME_CONFIG.nurserySlotsOpen) {
-          setNotifications(prev => [...prev, {
-            id: `notif-${Date.now()}`,
-            type: 'milestone',
-            emoji: '🥚',
-            message: 'Breeding successful! Egg added to nursery.',
-            time: 'now',
-            read: false,
-          }]);
-          
-          return {
-            ...prev,
-            nurseryEggs: [...prev.nurseryEggs, egg],
-            coins: prev.coins + 50,
-          };
-        } else {
-          setNotifications(prev => [...prev, {
-            id: `notif-${Date.now()}`,
-            type: 'milestone',
-            emoji: '⚠️',
-            message: 'Nursery storage is full!',
-            time: 'now',
-            read: false,
-          }]);
-          return prev;
-        }
-      }
-    });
-  }, []);
-
-  const handleRebirth = useCallback((newName: string) => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-
-      const oldAxolotl = prev.axolotl;
-      const bonusCoins = oldAxolotl.generation * 10;
-
-      // Elder lays egg → incubator 24h → player chooses when to hatch
-      const egg = createRebirthEgg(oldAxolotl);
-
-      return {
-        ...prev,
-        axolotl: null, // Axolotl retires
-        incubatorEgg: egg,
-        coins: prev.coins + bonusCoins,
-        lineage: [...prev.lineage, oldAxolotl],
-      };
-    });
-
-    setActiveModal(null);
-  }, []);
-
-  const handleHatchEgg = useCallback((eggId: string, name: string) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      // Check incubator first
-      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
-        if (!isEggReady(prev.incubatorEgg)) return prev; // Can't hatch until ready
-        
-        const newAxolotl = hatchEgg(prev.incubatorEgg, name);
-        
-        return {
-          ...prev,
-          axolotl: newAxolotl,
-          incubatorEgg: null,
-        };
-      }
-      
-      // Check nursery eggs
-      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
-      if (eggIndex >= 0) {
-        const egg = prev.nurseryEggs[eggIndex];
-        if (!isEggReady(egg)) return prev;
-        
-        // Move to incubator if empty, otherwise hatch directly
-        if (!prev.incubatorEgg) {
-          const newAxolotl = hatchEgg(egg, name);
-          return {
-            ...prev,
-            axolotl: newAxolotl,
-            nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
-          };
-        }
-      }
-      
-      return prev;
-    });
-  }, []);
-
-  const handleBoostEgg = useCallback((eggId: string) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      const boostCost = GAME_CONFIG.eggBoostCost;
-      if (prev.opals < boostCost) {
-        setNotifications(prevNotifs => [...prevNotifs, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '⚠️',
-          message: `Not enough opals! You need ${boostCost} 🪬 to boost an egg.`,
-          time: 'now',
-          read: false,
-        }]);
-        return prev;
-      }
-      
-      // Check incubator first
-      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
-        setNotifications(prevNotifs => [...prevNotifs, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '⚡',
-          message: 'Egg boosted! Ready to hatch instantly.',
-          time: 'now',
-          read: false,
-        }]);
-        return {
-          ...prev,
-          opals: prev.opals - boostCost,
-          incubatorEgg: {
-            ...prev.incubatorEgg,
-            incubationEndsAt: Date.now(), // Instant hatch
-          },
-        };
-      }
-      
-      // Check nursery eggs
-      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
-      if (eggIndex >= 0) {
-        setNotifications(prevNotifs => [...prevNotifs, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '⚡',
-          message: 'Egg boosted! Ready to hatch instantly.',
-          time: 'now',
-          read: false,
-        }]);
-        const updatedEggs = [...prev.nurseryEggs];
-        updatedEggs[eggIndex] = {
-          ...updatedEggs[eggIndex],
-          incubationEndsAt: Date.now(), // Instant hatch
-        };
-        return {
-          ...prev,
-          opals: prev.opals - boostCost,
-          nurseryEggs: updatedEggs,
-        };
-      }
-      
-      return prev;
-    });
-  }, []);
-
-  const handleGiftEgg = useCallback((eggId: string) => {
-    // For now, show a notification that this feature is coming soon
-    // In the future, this will open a friend selection modal
-    setNotifications(prev => [...prev, {
-      id: `notif-${Date.now()}`,
-      type: 'gift',
-      emoji: '🎁',
-      message: 'Gift feature coming soon! You\'ll be able to send eggs to friends.',
-      time: 'now',
-      read: false,
-    }]);
-  }, []);
-
-  const handleMiniGameEnd = useCallback((result: GameResult) => {
-    setActiveGame(null);
-    
-    setGameState(prev => {
-      if (!prev || !prev.axolotl) return prev;
-      
-      // Only award XP if energy was used (energy already deducted when game started)
-      const shouldAwardXP = prev.energy < prev.maxEnergy; // Energy was used
-      
-      const newXP = shouldAwardXP ? prev.axolotl.experience + result.xp : prev.axolotl.experience;
-      const newCoins = prev.coins + result.coins;
-      const newOpals = result.opals ? (prev.opals || 0) + result.opals : prev.opals;
-      
-      // Check for evolution
-      const updatedAxolotl = {
-        ...prev.axolotl,
-        experience: newXP,
-      };
-      const evolvedAxolotl = checkEvolution(updatedAxolotl);
-      
-      // Show notification
-      setNotifications(prevNotifs => [...prevNotifs, {
-        id: `notif-${Date.now()}`,
-        type: 'milestone',
-        emoji: result.tier === 'exceptional' ? '✨' : result.tier === 'good' ? '🎉' : '🎮',
-        message: `Earned ${result.xp} XP and ${result.coins} coins!${result.opals ? ` +${result.opals} 🪬` : ''}`,
-        time: 'now',
-        read: false,
-      }]);
-      
-      return {
-        ...prev,
-        axolotl: evolvedAxolotl,
-        coins: newCoins,
-        opals: newOpals,
-      };
-    });
-  }, []);
-
-  const handleDiscardEgg = useCallback((eggId: string) => {
-    // Confirm before discarding
-    if (!window.confirm('Are you sure you want to discard this egg? This cannot be undone.')) {
-      return;
-    }
-    
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      // Check incubator first
-      if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
-        setNotifications(prevNotifs => [...prevNotifs, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '🗑️',
-          message: 'Egg discarded.',
-          time: 'now',
-          read: false,
-        }]);
-        return {
-          ...prev,
-          incubatorEgg: null,
-        };
-      }
-      
-      // Check nursery eggs
-      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
-      if (eggIndex >= 0) {
-        setNotifications(prevNotifs => [...prevNotifs, {
-          id: `notif-${Date.now()}`,
-          type: 'milestone',
-          emoji: '🗑️',
-          message: 'Egg discarded.',
-          time: 'now',
-          read: false,
-        }]);
-        return {
-          ...prev,
-          nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
-        };
-      }
-      
-      return prev;
-    });
-  }, []);
-
-  const handleBuyCoins = useCallback((pack: { opals: number; coins: number }) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-      const currentOpals = prev.opals || 0;
-      if (currentOpals < pack.opals) return prev;
-      return {
-        ...prev,
-        opals: currentOpals - pack.opals,
-        coins: prev.coins + pack.coins,
-      };
-    });
-  }, []);
-
-  const handleBuyOpals = useCallback((pack: { price: string; opals: number }) => {
-    // Simulated purchase — no real transaction
-    setGameState(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        opals: (prev.opals || 0) + pack.opals,
-      };
-    });
-  }, []);
-
-  const handleBuyFilter = useCallback((filter: { id: string; name: string; coins: number; opals: number }) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      if (filter.opals > 0) {
-        if (prev.opals < filter.opals) return prev;
-        return {
-          ...prev,
-          opals: prev.opals - filter.opals,
-        };
-      } else {
-        if (prev.coins < filter.coins) return prev;
-        return {
-          ...prev,
-          coins: prev.coins - filter.coins,
-        };
-      }
-    });
-  }, []);
-
-  const handleBuyShrimp = useCallback((pack: { count: number; opals: number }) => {
-    setGameState(prev => {
-      if (!prev) return prev;
-      if (prev.opals < pack.opals) return prev;
-      return {
-        ...prev,
-        opals: prev.opals - pack.opals,
-        // TODO: Add shrimp to game state when shrimp system is implemented
-      };
-    });
-  }, []);
-
-  const handleBuyTreatment = useCallback((treatment: { id: string; name: string; opals: number }) => {
-    setGameState(prev => {
-      if (!prev?.axolotl) return prev;
-      if (prev.opals < treatment.opals) return prev;
-      
-      // Apply treatment based on type
-      const updated = { ...prev.axolotl };
-      if (treatment.id === 'treatment-water') {
-        updated.stats.waterQuality = Math.min(100, updated.stats.waterQuality + 30);
-      } else if (treatment.id === 'treatment-miracle') {
-        updated.stats.hunger = 100;
-        updated.stats.happiness = 100;
-        updated.stats.cleanliness = 100;
-        updated.stats.waterQuality = 100;
-      }
-      
-      return {
-        ...prev,
-        opals: prev.opals - treatment.opals,
-        axolotl: updated,
-      };
-    });
-  }, []);
+  // All other handlers are now in useGameActions hook
 
   // Show welcome screen if no axolotl
   if (!gameState || !gameState.axolotl) {

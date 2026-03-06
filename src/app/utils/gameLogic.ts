@@ -1,5 +1,6 @@
-import { Axolotl, AxolotlStats, SecondaryStats, LifeStage } from '../types/game';
+import { Axolotl, AxolotlStats, SecondaryStats, LifeStage, GameState } from '../types/game';
 import { GAME_CONFIG } from '../config/game';
+import { updateWellbeingStats } from '../axolotl/needsSystem';
 
 // Life stages are now based on level only (Baby L1-9, Juvenile L10-19, Adult L20-29, Elder L30-40)
 export const STAGE_REQUIREMENTS = {
@@ -9,12 +10,7 @@ export const STAGE_REQUIREMENTS = {
   elder: { minLevel: 30, maxLevel: 40 },
 };
 
-export const STAT_DECAY_RATE = {
-  hunger: 0.5, // per minute
-  happiness: 0.3,
-  cleanliness: 0.2,
-  waterQuality: 0.1,
-};
+// STAT_DECAY_RATE moved to axolotl/needsSystem.ts
 
 export const COLORS = [
   '#FFB5E8', // Pink
@@ -72,27 +68,32 @@ export function generateAxolotl(
   };
 }
 
-export function updateStats(axolotl: Axolotl): Axolotl {
+export function updateStats(axolotl: Axolotl, gameState?: GameState): Axolotl {
+  // Delegate to needsSystem for better organization
+  return updateWellbeingStats(axolotl, gameState);
+}
+
+/**
+ * Update shrimp count based on consumption (10 per day)
+ */
+export function updateShrimp(gameState: GameState): GameState {
+  if (!gameState.shrimpCount || gameState.shrimpCount <= 0) {
+    return gameState;
+  }
+
   const now = Date.now();
-  const minutesPassed = (now - axolotl.lastUpdated) / (1000 * 60);
-
-  if (minutesPassed < 0.1) return axolotl; // Don't update if less than 6 seconds
-
-  // Water Quality acts as a multiplier on other stats
-  const waterQualityMultiplier = axolotl.stats.waterQuality / 100;
+  const lastUpdate = gameState.lastShrimpUpdate || now;
+  const daysPassed = (now - lastUpdate) / (1000 * 60 * 60 * 24);
   
-  const newStats: AxolotlStats = {
-    hunger: Math.max(0, axolotl.stats.hunger - STAT_DECAY_RATE.hunger * minutesPassed * (waterQualityMultiplier < 0.5 ? 1.5 : waterQualityMultiplier > 0.7 ? 0.8 : 1)),
-    happiness: Math.max(0, axolotl.stats.happiness - STAT_DECAY_RATE.happiness * minutesPassed * (waterQualityMultiplier < 0.5 ? 1.5 : waterQualityMultiplier > 0.7 ? 0.8 : 1)),
-    cleanliness: Math.max(0, axolotl.stats.cleanliness - STAT_DECAY_RATE.cleanliness * minutesPassed * (waterQualityMultiplier < 0.5 ? 1.5 : waterQualityMultiplier > 0.7 ? 0.8 : 1)),
-    waterQuality: Math.max(5, axolotl.stats.waterQuality - STAT_DECAY_RATE.waterQuality * minutesPassed),
-  };
-
+  if (daysPassed < 1 / 24) return gameState; // Less than 1 hour, no update needed
+  
+  const shrimpEaten = Math.floor(daysPassed * GAME_CONFIG.shrimpEatenPerDay);
+  const newShrimpCount = Math.max(0, gameState.shrimpCount - shrimpEaten);
+  
   return {
-    ...axolotl,
-    stats: newStats,
-    age: axolotl.age + minutesPassed,
-    lastUpdated: now,
+    ...gameState,
+    shrimpCount: newShrimpCount,
+    lastShrimpUpdate: now,
   };
 }
 

@@ -4,6 +4,7 @@ import { ChevronDown, X, Lock } from 'lucide-react';
 import { Egg } from '../types/game';
 import { isEggReady } from '../utils/eggs';
 import { GAME_CONFIG } from '../config/game';
+import { EggHatchModal } from './EggHatchModal';
 
 interface DisplayEgg {
   id: string;
@@ -95,6 +96,8 @@ export function EggsPanel({
   const [selectedEgg, setSelectedEgg] = useState<DisplayEgg | null>(null);
   const [showUnlockToast, setShowUnlockToast] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
+  const [showHatchModal, setShowHatchModal] = useState(false);
+  const [eggToHatch, setEggToHatch] = useState<Egg | null>(null);
 
   // Convert real eggs to display format
   const displayEggs = useMemo(() => {
@@ -349,9 +352,8 @@ export function EggsPanel({
                   <motion.button
                     onClick={() => {
                       if (selectedEgg.hatchesIn === 'Ready!' && onHatch) {
-                        // Use default name for now (can be enhanced with name input modal later)
-                        onHatch(selectedEgg.egg.id, `${selectedEgg.rarity} Axolotl`);
-                        setSelectedEgg(null);
+                        setEggToHatch(selectedEgg.egg);
+                        setShowHatchModal(true);
                       }
                     }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
@@ -458,6 +460,22 @@ export function EggsPanel({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hatch name modal */}
+      <EggHatchModal
+        isOpen={showHatchModal}
+        onClose={() => {
+          setShowHatchModal(false);
+          setEggToHatch(null);
+        }}
+        onConfirm={(name) => {
+          if (eggToHatch && onHatch) {
+            onHatch(eggToHatch.id, name);
+            setSelectedEgg(null);
+          }
+        }}
+        eggRarity={eggToHatch?.rarity}
+      />
     </motion.div>
   );
 }

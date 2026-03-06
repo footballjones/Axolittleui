@@ -39,4 +39,8 @@ export const GAME_CONFIG = {
   
   // Egg actions
   eggBoostCost: 3, // Opals to instantly hatch an egg
+  
+  // Shrimp system
+  shrimpEatenPerDay: 10, // Axolotl eats 10 shrimp per day
+  shrimpCleanlinessBonus: 0.1, // Reduces cleanliness decay by 10% per shrimp (capped)
 } as const;
