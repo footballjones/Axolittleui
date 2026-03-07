@@ -4,7 +4,7 @@
  * Score = 10 - guesses used (higher is better)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
