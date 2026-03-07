@@ -217,6 +217,13 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
     if (!ctx) return;
+    
+    // Scale context to match display size
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / CANVAS_W;
+    const scaleY = rect.height / CANVAS_H;
+    ctx.save();
+    ctx.scale(scaleX, scaleY);
 
     const now = performance.now();
     const { bird, hooks } = gameStateRef.current;
@@ -278,6 +285,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
 
     // Draw everything
     draw(ctx);
+    ctx.restore();
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [isPlaying, isPaused, spawnHook, endGame, draw]);
@@ -292,11 +300,25 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setIsPlaying(true);
     setIsPaused(false);
     gameStateRef.current.lastHookTime = performance.now();
-    // Initial draw
+    
+    // Resize canvas to fill container
     const canvas = canvasRef.current;
     if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const container = canvas.parentElement;
+      if (container) {
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        // Scale canvas to fill container while maintaining aspect ratio
+        const scale = Math.min(containerWidth / CANVAS_W, containerHeight / CANVAS_H);
+        canvas.style.width = `${CANVAS_W * scale}px`;
+        canvas.style.height = `${CANVAS_H * scale}px`;
+      }
+      
+      const ctx = canvas.getContext('2d', { alpha: false });
       if (ctx) {
+        // Scale context to match display size
+        const rect = canvas.getBoundingClientRect();
+        ctx.scale(rect.width / CANVAS_W, rect.height / CANVAS_H);
         draw(ctx);
       }
     }
@@ -498,8 +520,14 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="max-w-full max-h-full w-full h-full object-contain"
-          style={{ touchAction: 'none' }}
+          className="w-full h-full"
+          style={{ 
+            touchAction: 'none',
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
           onClick={jump}
           onTouchStart={(e) => {
             e.preventDefault();
