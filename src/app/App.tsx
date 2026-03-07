@@ -930,10 +930,11 @@ export default function App() {
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom and top */}
-                <div className="relative flex-1 overflow-hidden" style={{ minHeight: 0, height: '100%', width: '100%', position: 'relative' }}>
+                <div className="relative flex-1 overflow-hidden" style={{ minHeight: 0, height: '100%', width: '100%', position: 'relative', marginTop: 0, paddingTop: 0 }}>
                   <div 
                     ref={aquariumScrollRef}
                     className="absolute inset-0 overflow-x-auto overflow-y-hidden"
+                    style={{ top: 0 }}
                     onScroll={() => {
                       if (isCenteringScroll.current) return;
                       if (!hasInitiallyScrolled.current) {
