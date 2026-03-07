@@ -97,6 +97,7 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     const game = gameRef.current;
+    if (!game) return;
     
     // Background
     ctx.fillStyle = '#78350f';
@@ -327,27 +328,35 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
     game.obstacleId = 0;
     game.gemId = 0;
     game.rng = new SeededRandom(Date.now());
-    game.lastFrameTime = performance.now();
+    game.lastFrameTime = 0;
     game.score = 0;
     setScore(0);
     setShowOverlay(false);
     setGameEnded(false);
     setFinalRewards(null);
     
-    // Start game loop immediately
-    if (ctxRef.current && !animationFrameRef.current) {
-      animationFrameRef.current = requestAnimationFrame(gameLoop);
+    // Draw initial frame
+    const ctx = ctxRef.current;
+    if (ctx) {
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      draw(ctx);
     }
-  }, [energy, gameLoop]);
+  }, [energy, draw]);
 
   // Initialize canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas && !ctxRef.current) {
-      ctxRef.current = canvas.getContext('2d', { 
+      const ctx = canvas.getContext('2d', { 
         alpha: false, 
         desynchronized: true 
       });
+      if (ctx) {
+        ctxRef.current = ctx;
+        // Draw initial frame
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
     }
   }, []);
 
@@ -393,22 +402,29 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
     };
   }, [handleMove]);
 
-  // Start game loop
+  // Start game loop - watch for game state changes
   useEffect(() => {
     const game = gameRef.current;
-    if (game.isPlaying && !game.isPaused && ctxRef.current) {
+    const ctx = ctxRef.current;
+    
+    if (game.isPlaying && !game.isPaused && ctx && !showOverlay) {
+      // Start loop if not already running
       if (!animationFrameRef.current) {
+        game.lastFrameTime = performance.now();
         animationFrameRef.current = requestAnimationFrame(gameLoop);
       }
     } else {
+      // Stop loop
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = undefined;
       }
     }
+    
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
       }
     };
   }, [showOverlay, gameEnded, gameLoop]);
