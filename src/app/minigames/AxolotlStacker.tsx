@@ -198,9 +198,9 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.fillStyle = '#0e2233';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
-    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT) {
+    // Grid lines - reduced frequency for performance
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.03)';
+    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT * 2) { // Draw every other line
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(CANVAS_W, y);
@@ -210,41 +210,39 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.save();
     ctx.translate(0, -cameraY);
 
-    // Draw placed stack
+    // Calculate visible range for culling
+    const visibleTop = cameraY;
+    const visibleBottom = cameraY + CANVAS_H;
+
+    // Draw placed stack - only visible blocks
     for (let i = 0; i < stack.length; i++) {
       const b = stack[i];
+      // Cull off-screen blocks
+      if (b.y + BLOCK_HEIGHT < visibleTop || b.y > visibleBottom) continue;
+      
       const color = i === 0 ? '#556' : COLORS[(i - 1) % COLORS.length];
       ctx.fillStyle = color;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
-      } else {
-        // Fallback for browsers without roundRect
-        ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
-      }
-      ctx.fill();
+      // Use fillRect for better performance (no rounded corners on mobile)
+      ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
 
-      // Highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
+      // Highlight - only on top few blocks for performance
+      if (i >= stack.length - 3) {
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
+      }
     }
 
     // Draw current swinging block
     if (current && isPlaying) {
       ctx.fillStyle = COLORS[score % COLORS.length];
       ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2, 4);
-      } else {
-        ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
-      }
-      ctx.fill();
+      // Use fillRect for better performance
+      ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
       ctx.globalAlpha = 1;
 
-      // Drop guide lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-      ctx.setLineDash([4, 4]);
+      // Drop guide lines - simplified for performance
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.setLineDash([6, 6]); // Longer dashes = fewer calculations
       ctx.beginPath();
       ctx.moveTo(current.x, current.y + BLOCK_HEIGHT);
       ctx.lineTo(current.x, BASE_Y);
@@ -254,8 +252,9 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       ctx.setLineDash([]);
     }
 
-    // Falling pieces
+    // Falling pieces - only draw if visible
     for (const p of fallingPieces) {
+      if (p.y + BLOCK_HEIGHT < visibleTop || p.y > visibleBottom + 100) continue;
       ctx.fillStyle = p.color || '#888';
       ctx.globalAlpha = 0.6;
       ctx.fillRect(p.x, p.y, p.width, BLOCK_HEIGHT - 2);
@@ -282,26 +281,34 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     // Clear canvas
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-    const { current, fallingPieces } = gameStateRef.current;
+    const { current, fallingPieces, cameraY } = gameStateRef.current;
 
     // Update current block position
     if (current) {
       current.x += current.speed * current.direction;
-      if (current.x + current.width > CANVAS_W) {
+      // Optimize boundary checks
+      if (current.x + current.width >= CANVAS_W) {
         current.direction = -1;
-      } else if (current.x < 0) {
+        current.x = CANVAS_W - current.width; // Clamp to prevent overshoot
+      } else if (current.x <= 0) {
         current.direction = 1;
+        current.x = 0; // Clamp to prevent overshoot
       }
     }
 
-    // Update falling pieces
-    for (const p of fallingPieces) {
-      p.vy += 0.4;
-      p.y += p.vy;
+    // Update falling pieces - batch filter for better performance
+    if (fallingPieces.length > 0) {
+      const cameraBottom = CANVAS_H + cameraY + 100;
+      for (let i = fallingPieces.length - 1; i >= 0; i--) {
+        const p = fallingPieces[i];
+        p.vy += 0.4;
+        p.y += p.vy;
+        // Remove if off-screen
+        if (p.y > cameraBottom) {
+          fallingPieces.splice(i, 1);
+        }
+      }
     }
-    gameStateRef.current.fallingPieces = fallingPieces.filter(
-      p => p.y < CANVAS_H + gameStateRef.current.cameraY + 100
-    );
 
     // Draw everything
     draw(ctx);
