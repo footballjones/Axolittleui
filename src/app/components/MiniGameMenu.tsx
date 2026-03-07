@@ -32,16 +32,17 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delayOffset + index * 0.05 }}
       className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-900/5 overflow-hidden"
+      style={{ transform: 'scale(0.8)' }}
     >
       <button
         onClick={() => onSelectGame(game.id)}
-        className="w-full p-2.5 text-left group transition-colors active:bg-white/20 cursor-pointer"
+        className="w-full p-3 text-left group transition-colors active:bg-white/20 cursor-pointer"
       >
-        <div className="flex flex-col items-center text-center gap-1">
-          <div className={`bg-gradient-to-br ${game.color} rounded-xl w-9 h-9 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
+        <div className="flex flex-col items-center text-center gap-1.5">
+          <div className={`bg-gradient-to-br ${game.color} rounded-xl w-11 h-11 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
             {game.id === 'fish-hooks' ? (
               <motion.span
-                className="text-lg leading-none inline-block"
+                className="text-xl leading-none inline-block"
                 style={{ transformOrigin: 'top center' }}
                 animate={{ rotate: [-20, 20, -20] }}
                 transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -50,7 +51,7 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
               </motion.span>
             ) : game.id === 'keepey-upey' ? (
               <motion.span
-                className="text-lg leading-none inline-block"
+                className="text-xl leading-none inline-block"
                 animate={{ x: [-5, 4, -3, 6, -5], y: [-4, 5, -6, 2, -4] }}
                 transition={{
                   x: { duration: 9, repeat: Infinity, ease: 'easeInOut' },
@@ -60,24 +61,24 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
                 {game.emoji}
               </motion.span>
             ) : (
-              <span className="text-lg leading-none">{game.emoji}</span>
+              <span className="text-xl leading-none">{game.emoji}</span>
             )}
           </div>
-          <h4 className="font-bold text-slate-800 text-xs leading-tight">{game.name}</h4>
+          <h4 className="font-bold text-slate-800 text-sm leading-tight">{game.name}</h4>
         </div>
       </button>
 
       {/* Info button underneath title */}
-      <div className="flex justify-center pb-0 -mt-2">
+      <div className="flex justify-center pb-0 -mt-3">
         <motion.button
           onClick={(e) => {
             e.stopPropagation();
             onToggleInfo(game.id);
           }}
-          className="w-4 h-4 flex items-center justify-center"
+          className="w-5 h-5 flex items-center justify-center"
           whileTap={{ scale: 0.9 }}
         >
-          <Info className="w-2.5 h-2.5 text-purple-400" strokeWidth={2.5} />
+          <Info className="w-3 h-3 text-purple-400" strokeWidth={2.5} />
         </motion.button>
       </div>
 
