@@ -209,8 +209,11 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       const topBlock = gameStateRef.current.stack[stackHeight - 1];
       const desiredTopY = 100; // Keep top blocks around this Y position
       const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
-      gameStateRef.current.cameraY = targetCameraY;
+      // Camera should only increase (move up), never decrease
+      // This prevents the one-time jump in the wrong direction
+      gameStateRef.current.cameraY = Math.max(gameStateRef.current.cameraY, targetCameraY);
     } else {
+      // Keep camera at 0 until we have more than 8 blocks
       gameStateRef.current.cameraY = 0;
     }
 
