@@ -315,7 +315,7 @@ export default function App() {
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center p-0 sm:p-4">
       <div className="w-full h-full sm:h-auto max-w-md flex flex-col min-h-0">
         {/* Game Container */}
-        <div className="relative flex-1 flex flex-col sm:block min-h-0">
+        <div className="relative flex-1 flex flex-col min-h-0">
           {/* Subtle glow effect */}
           <div className="absolute -inset-0.5 bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 rounded-none sm:rounded-[2rem] blur opacity-40 z-0" />
           
@@ -926,7 +926,7 @@ export default function App() {
             <div style={{ height: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)', flexShrink: 0 }} />
             
             {/* Content Area - Changes based on currentScreen */}
-            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ height: '100%', overflow: 'visible' }}>
+            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ minHeight: 0, overflow: 'visible' }}>
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
@@ -1046,8 +1046,9 @@ export default function App() {
                   WebkitOverflowScrolling: 'touch',
                   touchAction: 'pan-y',
                   paddingTop: '0.5rem',
-                  minHeight: '100%',
+                  height: '100%',
                   width: '100%',
+                  position: 'relative',
                 }}
               >
                 <MiniGameMenu
