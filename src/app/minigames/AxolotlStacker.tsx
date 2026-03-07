@@ -56,6 +56,8 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const isDroppingRef = useRef<boolean>(false); // Prevent double-tap/double-fire
+  const lastDropTimeRef = useRef<number>(0);
   const gameStateRef = useRef<{
     stack: StackBlock[];
     current: CurrentBlock | null;
@@ -85,6 +87,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     setIsPlaying(false);
     setGameEnded(true);
     gameStateRef.current.current = null;
+    isDroppingRef.current = false; // Release lock
     
     // Only calculate and show rewards if energy was available at start
     if (hadEnergyAtStart) {
@@ -119,11 +122,22 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       cameraY: 0,
     };
     setScore(0);
+    isDroppingRef.current = false; // Clear lock
+    lastDropTimeRef.current = 0; // Reset timer
     spawnBlock(0);
   }, [spawnBlock]);
 
   const dropBlock = useCallback(() => {
     if (!isPlaying || isPaused || !gameStateRef.current.current) return;
+    
+    // Prevent double-tap/double-fire on mobile
+    const now = performance.now();
+    if (isDroppingRef.current || (now - lastDropTimeRef.current) < 300) {
+      return; // Ignore if already dropping or too soon since last drop
+    }
+    
+    isDroppingRef.current = true;
+    lastDropTimeRef.current = now;
 
     // Get a snapshot of current state to avoid race conditions
     const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
@@ -149,6 +163,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
         vy: 0,
         color: COLORS[score % COLORS.length],
       });
+      isDroppingRef.current = false; // Release lock before ending
       endGame();
       return;
     }
@@ -191,6 +206,11 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
+    
+    // Release the lock after a short delay to allow next drop
+    setTimeout(() => {
+      isDroppingRef.current = false;
+    }, 200);
   }, [isPlaying, isPaused, score, spawnBlock, endGame]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -628,10 +648,19 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
             left: 0,
             zIndex: 1,
           }}
-          onClick={dropBlock}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropBlock();
+          }}
           onTouchStart={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             dropBlock();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
           }}
         />
       </div>
