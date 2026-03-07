@@ -95,6 +95,7 @@ export default function App() {
     setNotifications,
     setActiveModal,
     setActiveGame,
+    setCurrentScreen,
   });
   
   const {

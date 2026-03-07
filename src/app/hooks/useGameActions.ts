@@ -22,6 +22,7 @@ interface UseGameActionsProps {
   setNotifications: React.Dispatch<React.SetStateAction<GameNotification[]>>;
   setActiveModal: React.Dispatch<React.SetStateAction<'shop' | 'social' | 'rebirth' | 'stats' | 'settings' | null>>;
   setActiveGame: React.Dispatch<React.SetStateAction<string | null>>;
+  setCurrentScreen: React.Dispatch<React.SetStateAction<'home' | 'games'>>;
 }
 
 export function useGameActions({
@@ -30,6 +31,7 @@ export function useGameActions({
   setNotifications,
   setActiveModal,
   setActiveGame,
+  setCurrentScreen,
 }: UseGameActionsProps) {
   const handleFeed = useCallback(() => {
     setGameState(prev => {
