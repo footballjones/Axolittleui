@@ -1061,20 +1061,9 @@ export default function App() {
                 <MiniGameMenu
                   onClose={() => setCurrentScreen('home')}
                   onSelectGame={(gameId) => {
-                    // Check energy before starting
-                    if (!gameState || gameState.energy <= 0) {
-                      setNotifications(prev => [...prev, {
-                        id: `notif-${Date.now()}`,
-                        type: 'milestone',
-                        emoji: '⚠️',
-                        message: 'Not enough energy! Energy regenerates over time.',
-                        time: 'now',
-                        read: false,
-                      }]);
-                      return;
-                    }
+                    if (!gameState) return;
                     
-                    // Deduct energy when game starts
+                    // Deduct energy when game starts (only if energy > 0)
                     setGameState(prev => {
                       if (!prev || prev.energy <= 0) return prev;
                       return {

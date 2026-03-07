@@ -474,15 +474,19 @@ export function useGameActions({
 
   const handleMiniGameEnd = useCallback((result: GameResult) => {
     setActiveGame(null);
+    // Return to games menu after game ends
     
     setGameState(prev => {
       if (!prev || !prev.axolotl) return prev;
       
-      const shouldAwardXP = prev.energy < prev.maxEnergy;
+      // Only award rewards if energy was available (energy was deducted when game started)
+      // If energy is at max, it means no energy was used, so no rewards
+      // We check if energy < maxEnergy to determine if energy was used
+      const hadEnergy = prev.energy < prev.maxEnergy;
       
-      const newXP = shouldAwardXP ? prev.axolotl.experience + result.xp : prev.axolotl.experience;
-      const newCoins = prev.coins + result.coins;
-      const newOpals = result.opals ? (prev.opals || 0) + result.opals : prev.opals;
+      const newXP = hadEnergy ? prev.axolotl.experience + result.xp : prev.axolotl.experience;
+      const newCoins = hadEnergy ? prev.coins + result.coins : prev.coins;
+      const newOpals = hadEnergy && result.opals ? (prev.opals || 0) + result.opals : prev.opals;
       
       const updatedAxolotl = {
         ...prev.axolotl,
@@ -490,14 +494,26 @@ export function useGameActions({
       };
       const evolvedAxolotl = checkEvolution(updatedAxolotl);
       
-      setNotifications(prevNotifs => [...prevNotifs, {
-        id: `notif-${Date.now()}`,
-        type: 'milestone',
-        emoji: result.tier === 'exceptional' ? '✨' : result.tier === 'good' ? '🎉' : '🎮',
-        message: `Earned ${result.xp} XP and ${result.coins} coins!${result.opals ? ` +${result.opals} 🪬` : ''}`,
-        time: 'now',
-        read: false,
-      }]);
+      // Show appropriate notification based on whether rewards were earned
+      if (hadEnergy) {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: result.tier === 'exceptional' ? '✨' : result.tier === 'good' ? '🎉' : '🎮',
+          message: `Earned ${result.xp} XP and ${result.coins} coins!${result.opals ? ` +${result.opals} 🪬` : ''}`,
+          time: 'now',
+          read: false,
+        }]);
+      } else {
+        setNotifications(prevNotifs => [...prevNotifs, {
+          id: `notif-${Date.now()}`,
+          type: 'milestone',
+          emoji: '⚡',
+          message: 'No energy! Played for fun but no rewards earned. Energy regenerates over time.',
+          time: 'now',
+          read: false,
+        }]);
+      }
       
       return {
         ...prev,
