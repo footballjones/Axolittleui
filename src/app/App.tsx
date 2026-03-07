@@ -1238,6 +1238,8 @@ export default function App() {
           <BiteTag
             onEnd={handleMiniGameEnd}
             energy={gameState.energy}
+            speed={gameState.axolotl?.secondaryStats?.speed || 0}
+            stamina={gameState.axolotl?.secondaryStats?.stamina || 0}
           />
         )}
       </AnimatePresence>

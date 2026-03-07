@@ -15,6 +15,7 @@ export interface MiniGameProps {
   energy: number; // Current energy (for display/validation)
   strength?: number; // Axolotl strength stat (0-100)
   speed?: number; // Axolotl speed stat (0-100)
+  stamina?: number; // Axolotl stamina stat (0-100)
 }
 
 export interface GameRewardTier {
