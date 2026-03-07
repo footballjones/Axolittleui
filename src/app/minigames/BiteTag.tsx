@@ -31,8 +31,14 @@ interface Player {
 
 export function BiteTag({ onEnd, energy }: MiniGameProps) {
   const [timeRemaining, setTimeRemaining] = useState(GAME_DURATION);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false);
+  const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
+  const [finalScore, setFinalScore] = useState(0);
+  const [isWinner, setIsWinner] = useState(false);
   const [players, setPlayers] = useState<Player[]>([
     { id: 0, name: 'You', x: 25, y: 25, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: false },
     { id: 1, name: 'Bot 1', x: 75, y: 25, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: true },
@@ -43,11 +49,68 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
   const animationFrameRef = useRef<number>();
   const lastFrameTimeRef = useRef<number>(Date.now());
 
-  // Initialize - random player is "it"
-  useEffect(() => {
+  const reset = useCallback(() => {
+    const initialPlayers: Player[] = [
+      { id: 0, name: 'You', x: 25, y: 25, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: false },
+      { id: 1, name: 'Bot 1', x: 75, y: 25, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: true },
+      { id: 2, name: 'Bot 2', x: 25, y: 75, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: true },
+      { id: 3, name: 'Bot 3', x: 75, y: 75, isIt: false, bites: 0, isOut: false, immunityUntil: 0, isBot: true },
+    ];
     const itIndex = Math.floor(Math.random() * 4);
-    setPlayers(prev => prev.map((p, i) => ({ ...p, isIt: i === itIndex })));
+    setPlayers(initialPlayers.map((p, i) => ({ ...p, isIt: i === itIndex })));
+    setTimeRemaining(GAME_DURATION);
+    setPlayerDirection({ x: 0, y: 0 });
+    lastFrameTimeRef.current = Date.now();
   }, []);
+
+  const startGame = useCallback(() => {
+    setHadEnergyAtStart(energy > 0);
+    reset();
+    setShowOverlay(false);
+    setGameEnded(false);
+    setFinalRewards(null);
+    setIsPlaying(true);
+    setIsPaused(false);
+  }, [reset, energy]);
+
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    setGameEnded(true);
+    
+    // Get current players state
+    setPlayers(currentPlayers => {
+      const player = currentPlayers.find(p => p.id === 0);
+      const activePlayers = currentPlayers.filter(p => !p.isOut);
+      const won = activePlayers.length === 1 && activePlayers[0].id === 0;
+      const minBites = Math.min(...currentPlayers.filter(p => !p.isOut).map(p => p.bites));
+      const isTiedWinner = !won && player && !player.isOut && player.bites === minBites;
+      
+      const score = won || isTiedWinner ? 90 - (player?.bites || 0) * 10 : 0;
+      setFinalScore(score);
+      setIsWinner(won || isTiedWinner);
+      
+      // Only calculate and show rewards if energy was available at start
+      if (hadEnergyAtStart) {
+        const rewards = calculateRewards('bite-tag', score);
+        setFinalRewards({
+          tier: rewards.tier,
+          xp: (won || isTiedWinner) ? rewards.xp : 0,
+          coins: rewards.coins,
+          opals: rewards.opals,
+        });
+      } else {
+        setFinalRewards({
+          tier: 'normal',
+          xp: 0,
+          coins: 0,
+          opals: undefined,
+        });
+      }
+      setShowOverlay(true);
+      
+      return currentPlayers;
+    });
+  }, [hadEnergyAtStart]);
 
   const handleMove = useCallback((direction: { x: number; y: number }) => {
     if (!isPlaying || isPaused) return;
@@ -62,9 +125,11 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
     lastFrameTimeRef.current = now;
 
     // Update timer
+    let timeExpired = false;
     setTimeRemaining(prev => {
       const newTime = prev - deltaTime / 60;
       if (newTime <= 0) {
+        timeExpired = true;
         setIsPlaying(false);
         return 0;
       }
@@ -153,13 +218,19 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
       const activePlayers = updated.filter(p => !p.isOut);
       if (activePlayers.length === 1) {
         setIsPlaying(false);
+        setTimeout(() => endGame(), 100);
       }
-
+      
+      // Check if time expired
+      if (timeExpired) {
+        setTimeout(() => endGame(), 100);
+      }
+      
       return updated;
     });
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [isPlaying, isPaused, playerDirection]);
+  }, [isPlaying, isPaused, playerDirection, endGame]);
 
   // Start game loop
   useEffect(() => {
@@ -198,27 +269,6 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
     };
   }, [isPlaying, isPaused, handleMove]);
 
-  // End game
-  useEffect(() => {
-    if (!isPlaying) {
-      const player = players.find(p => p.id === 0);
-      const activePlayers = players.filter(p => !p.isOut);
-      const isWinner = activePlayers.length === 1 && activePlayers[0].id === 0;
-      const minBites = Math.min(...players.filter(p => !p.isOut).map(p => p.bites));
-      const isTiedWinner = !isWinner && player && !player.isOut && player.bites === minBites;
-      
-      const score = isWinner || isTiedWinner ? 90 - (player?.bites || 0) * 10 : 0;
-      const rewards = calculateRewards('bite-tag', score);
-      onEnd({
-        score,
-        tier: rewards.tier,
-        xp: (isWinner || isTiedWinner) ? rewards.xp : 0,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
-    }
-  }, [isPlaying, players, onEnd]);
-
   const player = players.find(p => p.id === 0);
 
   return (
@@ -231,6 +281,184 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
       isPaused={isPaused}
     >
       <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-green-200 via-emerald-300 to-teal-400">
+        {/* Start/End Overlay */}
+        {showOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-gradient-to-br from-green-900/80 via-emerald-900/80 to-teal-900/80 backdrop-blur-md z-20 flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-green-300/80 shadow-2xl relative overflow-hidden"
+            >
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-200/30 rounded-full blur-2xl -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-200/30 rounded-full blur-xl -ml-12 -mb-12" />
+              
+              <div className="relative z-10">
+                {!isPlaying && !gameEnded ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="text-6xl mb-4"
+                      >
+                        🦷
+                      </motion.div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600 mb-4">
+                        Bite Tag
+                      </h2>
+                      <div className="space-y-2 text-green-700 text-sm font-medium">
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">👹</span>
+                          One player is "it" - tag others to pass it
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">⚠️</span>
+                          3 bites = you're out!
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">🏃</span>
+                          Run away or chase - arrow keys or WASD
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">🏆</span>
+                          Last standing or least bites wins!
+                        </p>
+                      </div>
+                    </div>
+                    <motion.button
+                      onClick={startGame}
+                      className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white font-bold py-4 rounded-xl text-lg shadow-lg relative overflow-hidden group"
+                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>Start Game</span>
+                        <span className="text-xl">🚀</span>
+                      </span>
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </motion.button>
+                  </>
+                ) : gameEnded && finalRewards ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <div className="text-6xl mb-4">
+                        {isWinner ? '🏆' : '😅'}
+                      </div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600 mb-4">
+                        {isWinner ? 'You Win!' : 'Game Over!'}
+                      </h2>
+                      <p className="text-green-800 text-center mb-2 text-xl font-bold">
+                        Your bites: {player?.bites || 0} / 3
+                      </p>
+                      <p className="text-green-600 text-center mb-4 text-sm font-medium">
+                        {isWinner ? '🌟 Last one standing!' : '💪 Better luck next time!'}
+                      </p>
+                      
+                      {/* Rewards display - only show if energy was used */}
+                      {hadEnergyAtStart && finalRewards && (finalRewards.xp > 0 || finalRewards.coins > 0) ? (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-green-200">
+                          <p className="text-green-700 font-bold text-lg mb-2">Rewards:</p>
+                          <div className="flex flex-col gap-2 text-green-800">
+                            {finalRewards.xp > 0 && (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">⭐</span>
+                                <span className="font-semibold">+{finalRewards.xp} XP</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">💰</span>
+                              <span className="font-semibold">+{finalRewards.coins} Coins</span>
+                            </div>
+                            {finalRewards.opals && (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">🪬</span>
+                                <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                              </div>
+                            )}
+                            <p className="text-xs text-green-600 mt-1">
+                              Tier: {finalRewards.tier.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-green-200">
+                          <p className="text-green-700 font-bold text-lg mb-2">No Energy!</p>
+                          <p className="text-green-600 text-center text-sm">
+                            Played for fun but no rewards earned.<br />
+                            Energy regenerates over time.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <motion.button
+                        onClick={() => {
+                          setGameEnded(false);
+                          setFinalRewards(null);
+                          startGame();
+                        }}
+                        className="flex-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg relative overflow-hidden group"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <span className="relative z-10">Play Again</span>
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        />
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          // Call onEnd with actual rewards when leaving (only if energy was used)
+                          if (hadEnergyAtStart && finalRewards) {
+                            onEnd({
+                              score: finalScore,
+                              tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
+                              xp: finalRewards.xp,
+                              coins: finalRewards.coins,
+                              opals: finalRewards.opals,
+                            });
+                          } else {
+                            // No rewards if no energy
+                            onEnd({
+                              score: finalScore,
+                              tier: 'normal',
+                              xp: 0,
+                              coins: 0,
+                            });
+                          }
+                        }}
+                        className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        Back to Games
+                      </motion.button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Game content - only show when playing */}
+        {isPlaying && !showOverlay && (
+          <>
         {/* Arena */}
         <div className="absolute inset-4 border-4 border-white/50 rounded-3xl" />
 
@@ -292,6 +520,8 @@ export function BiteTag({ onEnd, energy }: MiniGameProps) {
             {player?.isIt ? 'Tag others! 👹' : 'Run away! 🏃'} • Arrow keys or WASD
           </p>
         </div>
+          </>
+        )}
       </div>
     </GameWrapper>
   );
