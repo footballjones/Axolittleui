@@ -923,17 +923,18 @@ export default function App() {
             </AnimatePresence>
 
             {/* Content Area - Changes based on currentScreen */}
-            {/* Positioned absolutely to fill space below header */}
+            {/* Use flex with padding-top to account for absolutely positioned header */}
             <div 
-              className="absolute inset-0 flex flex-col" 
+              className="flex-1 min-h-0 flex flex-col relative z-20" 
               style={{ 
-                top: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)',
+                paddingTop: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)',
+                marginTop: 0,
               }}
             >
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
-                <div className="relative flex-1 sm:rounded-[2rem] overflow-hidden" style={{ minHeight: 0 }}>
+                <div className="relative flex-1 sm:rounded-[2rem] overflow-hidden" style={{ minHeight: 0, height: '100%', width: '100%', position: 'relative' }}>
                   <div 
                     ref={aquariumScrollRef}
                     className="absolute inset-0 overflow-x-auto overflow-y-hidden"
@@ -1049,6 +1050,8 @@ export default function App() {
                   WebkitOverflowScrolling: 'touch',
                   touchAction: 'pan-y',
                   paddingTop: '0.5rem',
+                  height: '100%',
+                  width: '100%',
                 }}
               >
                 <MiniGameMenu
