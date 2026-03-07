@@ -317,6 +317,8 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
   const startGame = useCallback(() => {
     setHadEnergyAtStart(energy > 0);
     const game = gameRef.current;
+    const ctx = ctxRef.current;
+    
     game.isPlaying = true;
     game.isPaused = false;
     game.playerY = 50;
@@ -336,12 +338,17 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
     setFinalRewards(null);
     
     // Draw initial frame
-    const ctx = ctxRef.current;
     if (ctx) {
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
       draw(ctx);
     }
-  }, [energy, draw]);
+    
+    // Start game loop immediately
+    if (ctx && !animationFrameRef.current) {
+      game.lastFrameTime = performance.now();
+      animationFrameRef.current = requestAnimationFrame(gameLoop);
+    }
+  }, [energy, draw, gameLoop]);
 
   // Initialize canvas
   useEffect(() => {
