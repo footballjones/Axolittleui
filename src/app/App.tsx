@@ -926,7 +926,7 @@ export default function App() {
             <div style={{ height: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)', flexShrink: 0 }} />
             
             {/* Content Area - Changes based on currentScreen */}
-            <div className="flex-1 min-h-0 flex flex-col relative z-20">
+            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ height: '100%', overflow: 'visible' }}>
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
@@ -1046,7 +1046,7 @@ export default function App() {
                   WebkitOverflowScrolling: 'touch',
                   touchAction: 'pan-y',
                   paddingTop: '0.5rem',
-                  height: '100%',
+                  minHeight: '100%',
                   width: '100%',
                 }}
               >
