@@ -125,14 +125,21 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const [waitingForNext, setWaitingForNext] = useState(false);
   const timerIntervalRef = useRef<number>();
 
+  const getTimerForScore = useCallback((currentScore: number) => {
+    // Timer gets faster: 6000ms - score * 200, minimum 2500ms (converted to seconds)
+    const timerMs = Math.max(2500, 6000 - currentScore * 200);
+    return timerMs / 1000; // Convert to seconds
+  }, []);
+
   const loadNewQuestion = useCallback(() => {
     const newQuestion = generateQuestion(score);
+    const newTimer = getTimerForScore(score);
     setCurrentQuestion(newQuestion);
-    setTimer(INITIAL_TIMER);
+    setTimer(newTimer);
     setSelectedAnswer(null);
     setFeedback({ text: '', type: '' });
     setWaitingForNext(false);
-  }, [score]);
+  }, [score, getTimerForScore]);
 
   const startGame = useCallback(() => {
     setScore(0);
@@ -218,84 +225,147 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-20 flex items-center justify-center"
+            className="absolute inset-0 bg-gradient-to-br from-violet-900/80 via-purple-900/80 to-indigo-900/80 backdrop-blur-md z-20 flex items-center justify-center"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white/95 backdrop-blur-md rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-purple-300 shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100 rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-purple-300/80 shadow-2xl relative overflow-hidden"
             >
-              {!isPlaying ? (
-                <>
-                  <h2 className="text-3xl font-bold text-purple-800 text-center mb-4">🔢 Math Rush</h2>
-                  <p className="text-purple-600 text-center mb-6">
-                    Solve equations before time runs out!<br />
-                    Each correct answer speeds up the timer.
-                  </p>
-                  <motion.button
-                    onClick={startGame}
-                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold py-4 rounded-xl text-lg shadow-lg active:scale-95 transition-transform"
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Start
-                  </motion.button>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-3xl font-bold text-purple-800 text-center mb-4">Game Over!</h2>
-                  <p className="text-purple-600 text-center mb-2 text-xl font-bold">
-                    {score} correct {score === 1 ? 'answer' : 'answers'}
-                  </p>
-                  <p className="text-purple-500 text-center mb-6 text-sm">
-                    {score >= 15 ? 'Exceptional!' : score >= 8 ? 'Good job!' : 'Keep practicing!'}
-                  </p>
-                  <div className="flex gap-3">
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-200/30 rounded-full blur-xl -ml-12 -mb-12" />
+              
+              <div className="relative z-10">
+                {!isPlaying ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="text-6xl mb-4"
+                      >
+                        🔢
+                      </motion.div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mb-4">
+                        Math Rush
+                      </h2>
+                      <div className="space-y-2 text-purple-700 text-sm font-medium">
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">🦐</span>
+                          Solve equations before time runs out!
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">⚡</span>
+                          Each correct answer speeds up the timer
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">💎</span>
+                          Get as many right as you can!
+                        </p>
+                      </div>
+                    </div>
                     <motion.button
                       onClick={startGame}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"
+                      className="w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-white font-bold py-4 rounded-xl text-lg shadow-lg relative overflow-hidden group"
                       whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
                     >
-                      Play Again
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>Start Game</span>
+                        <span className="text-xl">🚀</span>
+                      </span>
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
                     </motion.button>
-                    <motion.button
-                      onClick={() => {
-                        setIsPlaying(false);
-                        setShowOverlay(false);
-                        onEnd({ score: 0, tier: 'normal', xp: 0, coins: 0 });
-                      }}
-                      className="flex-1 bg-gray-400 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      Back to Games
-                    </motion.button>
-                  </div>
-                </>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center mb-6">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 200 }}
+                        className="text-6xl mb-4"
+                      >
+                        {score >= 15 ? '✨' : score >= 8 ? '🎉' : '🎮'}
+                      </motion.div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mb-4">
+                        Game Over!
+                      </h2>
+                      <p className="text-purple-800 text-center mb-2 text-2xl font-bold">
+                        {score} correct {score === 1 ? 'answer' : 'answers'}
+                      </p>
+                      <p className="text-purple-600 text-center mb-1 text-sm font-medium">
+                        {score >= 15 ? '🌟 Exceptional performance!' : score >= 8 ? '🎯 Good job!' : '💪 Keep practicing!'}
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <motion.button
+                        onClick={startGame}
+                        className="flex-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg relative overflow-hidden group"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <span className="relative z-10">Play Again</span>
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        />
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          setIsPlaying(false);
+                          setShowOverlay(false);
+                          onEnd({ score: 0, tier: 'normal', xp: 0, coins: 0 });
+                        }}
+                        className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        Back to Games
+                      </motion.button>
+                    </div>
+                  </>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
 
         {/* Timer bar */}
-        {isPlaying && currentQuestion && (
-          <div className="w-full max-w-md mb-6 z-10">
-            <div className="h-3 bg-white/30 rounded-full overflow-hidden border-2 border-white/50">
-              <motion.div
-                className="h-full"
-                style={{
-                  background: timer / INITIAL_TIMER > 0.3 
-                    ? 'linear-gradient(to right, #4fc3f7, #29b6f6)' 
-                    : 'linear-gradient(to right, #ef5350, #e53935)',
-                }}
-                initial={{ width: '100%' }}
-                animate={{ width: `${(timer / INITIAL_TIMER) * 100}%` }}
-                transition={{ duration: 0.1, ease: 'linear' }}
-              />
+        {isPlaying && currentQuestion && (() => {
+          const currentTimerMax = getTimerForScore(score);
+          const timerPercent = (timer / currentTimerMax) * 100;
+          return (
+            <div className="w-full max-w-md mb-6 z-10">
+              <div className="h-3 bg-white/30 rounded-full overflow-hidden border-2 border-white/50">
+                <motion.div
+                  className="h-full"
+                  style={{
+                    background: timerPercent > 30 
+                      ? 'linear-gradient(to right, #4fc3f7, #29b6f6)' 
+                      : 'linear-gradient(to right, #ef5350, #e53935)',
+                  }}
+                  initial={{ width: '100%' }}
+                  animate={{ width: `${timerPercent}%` }}
+                  transition={{ duration: 0.1, ease: 'linear' }}
+                />
+              </div>
+              <p className="text-center text-white font-bold text-sm mt-2 drop-shadow-lg">
+                {Math.ceil(timer)}s
+              </p>
             </div>
-            <p className="text-center text-white font-bold text-sm mt-2 drop-shadow-lg">
-              {Math.ceil(timer)}s
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Question */}
         {isPlaying && currentQuestion && (
