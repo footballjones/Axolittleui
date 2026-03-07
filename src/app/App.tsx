@@ -1173,13 +1173,11 @@ export default function App() {
       )}
 
       {activeModal === 'stats' && (
-        {axolotl && (
-          <StatsModal
-            onClose={() => setActiveModal(null)}
-            stats={axolotl.secondaryStats}
-            name={axolotl.name}
-          />
-        )}
+        <StatsModal
+          onClose={() => setActiveModal(null)}
+          stats={axolotl.secondaryStats}
+          name={axolotl.name}
+        />
       )}
 
       {activeModal === 'settings' && (
