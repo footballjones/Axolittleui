@@ -1,7 +1,7 @@
 /**
  * Fishing - Competitive fishing game
  * Player vs bot axolotl. Click & hold to lower line, release to reel up.
- * Catch the most weight in 60 seconds to win!
+ * Catch the most weight in 45 seconds to win!
  * Features: Canvas rendering, 4 fish types, stat integration, bot AI
  */
 
@@ -18,7 +18,7 @@ const SEABED_Y = 580;
 const LINE_DESCEND_BASE = 2.8;
 const LINE_DESCEND_SPEED_BONUS = 1.4; // max bonus from speed stat
 const LINE_ASCEND_SPEED = 5;
-const GAME_DURATION = 60; // 60 seconds
+const GAME_DURATION = 45; // 45 seconds
 const ESCAPE_TIMEOUT = 2000;
 
 const PLAYER_BOAT_X = 90;
@@ -186,12 +186,17 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
     const { fish, botLineY } = gameStateRef.current;
     for (const f of fish) {
       if (f.caught) continue;
-      if (Math.abs(f.x - BOT_BOAT_X) < 55 && Math.abs(f.y - botLineY) < 40) {
+      // Quick distance check
+      const dx = Math.abs(f.x - BOT_BOAT_X);
+      if (dx > 55) continue;
+      const dy = Math.abs(f.y - botLineY);
+      if (dy > 40) continue;
+      if (dx < 55 && dy < 40) {
         if (Math.random() < (BOT_CATCH_RATES[f.typeName] || 0.5)) {
           f.caught = true;
           gameStateRef.current.botHooked = f;
           gameStateRef.current.botHookTime = now;
-          gameStateRef.current.botReelDelay = 210 + Math.random() * 840;
+          gameStateRef.current.botReelDelay = 100 + Math.random() * 200; // Faster reel: 100-300ms instead of 210-1050ms
           gameStateRef.current.botState = 'BOT_HOOKED';
           return true;
         }
@@ -216,11 +221,14 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
           break;
         }
         state.playerLineY = Math.min(SEABED_Y, playerLineY + lineDescendSpeed);
-        // Check fish collision
+        // Check fish collision - only check nearby fish for performance
         for (const f of state.fish) {
           if (f.caught) continue;
+          // Quick distance check first
           const dx = Math.abs(f.x - PLAYER_BOAT_X);
+          if (dx > 60) continue; // Skip if too far horizontally
           const dy = Math.abs(f.y - state.playerLineY);
+          if (dy > 40) continue; // Skip if too far vertically
           if (dx < f.type.w * 0.8 && dy < f.type.h * 0.8) {
             // Roll break-free
             const chance = f.type.breakFree * Math.max(0, 1 - strength / f.type.strengthDiv);
@@ -267,8 +275,11 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
         if (!playerHooked && state.playerLineY > WATERLINE_Y) {
           for (const f of state.fish) {
             if (f.caught) continue;
+            // Quick distance check first
             const dx = Math.abs(f.x - PLAYER_BOAT_X);
+            if (dx > 60) continue;
             const dy = Math.abs(f.y - state.playerLineY);
+            if (dy > 40) continue;
             if (dx < f.type.w * 0.8 && dy < f.type.h * 0.8) {
               const chance = f.type.breakFree * Math.max(0, 1 - strength / f.type.strengthDiv);
               if (Math.random() < chance) {
@@ -394,19 +405,19 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
     ctx.fillStyle = sand;
     ctx.fillRect(0, SEABED_Y, CANVAS_W, CANVAS_H - SEABED_Y);
 
-    // Waterline ripple
-    ctx.strokeStyle = 'rgba(150, 220, 255, 0.4)';
+    // Waterline ripple - simplified for performance
+    ctx.strokeStyle = 'rgba(150, 220, 255, 0.3)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let x = 0; x < CANVAS_W; x += 2) {
+    for (let x = 0; x < CANVAS_W; x += 4) { // Reduced frequency
       const y = WATERLINE_Y + Math.sin(x * 0.03 + now * 0.002) * 3;
       x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.stroke();
 
-    // Water particles
-    ctx.fillStyle = 'rgba(100, 200, 255, 0.06)';
-    for (let i = 0; i < 15; i++) {
+    // Water particles - reduced for performance
+    ctx.fillStyle = 'rgba(100, 200, 255, 0.04)';
+    for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
       const px = (i * 73 + now * 0.008) % CANVAS_W;
       const py = WATERLINE_Y + 20 + (i * 137 + now * 0.005) % (SEABED_Y - WATERLINE_Y - 40);
       ctx.beginPath();
@@ -414,19 +425,13 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
       ctx.fill();
     }
 
-    // Depth zone lines (subtle)
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
-    ctx.lineWidth = 1;
-    for (const y of [320, 420, 520]) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y);
-      ctx.stroke();
-    }
+    // Depth zone lines - removed for performance
 
-    // Fish (uncaught)
+    // Fish (uncaught) - only draw visible fish for performance
     for (const f of fish) {
-      if (!f.caught) drawFish(ctx, f);
+      if (!f.caught && f.x > -40 && f.x < CANVAS_W + 40) {
+        drawFish(ctx, f);
+      }
     }
 
     // Boats
@@ -608,7 +613,7 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
       f.y = f.baseY + Math.sin(f.phase + f.x * 0.015) * 8;
     }
     state.fish = state.fish.filter(f => f.caught || (f.x > -60 && f.x < CANVAS_W + 60));
-    while (state.fish.length < 6) spawnFish();
+    while (state.fish.length < 4) spawnFish(); // Reduced from 6 to 4 for performance
 
     updatePlayer(now);
     updateBot(now);

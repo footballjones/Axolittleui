@@ -200,22 +200,8 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const newScore = score + 1;
     setScore(newScore);
 
-    // Scroll camera up to keep current block and top of stack visible
-    // Start scrolling when we have more than 8 blocks, keep ~8-10 blocks visible
-    const stackHeight = gameStateRef.current.stack.length;
-    if (stackHeight > 8) {
-      // Calculate camera to keep the top blocks near the top of screen
-      // The current block is at top.y - BLOCK_HEIGHT, we want it visible
-      const topBlock = gameStateRef.current.stack[stackHeight - 1];
-      const desiredTopY = 100; // Keep top blocks around this Y position
-      const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
-      // Camera should only increase (move up), never decrease
-      // This prevents the one-time jump in the wrong direction
-      gameStateRef.current.cameraY = Math.max(gameStateRef.current.cameraY, targetCameraY);
-    } else {
-      // Keep camera at 0 until we have more than 8 blocks
-      gameStateRef.current.cameraY = 0;
-    }
+    // Camera is updated smoothly in gameLoop, not here
+    // This prevents jumps and ensures smooth transitions
 
     // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
@@ -307,31 +293,32 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     const { current, fallingPieces, stack, cameraY } = gameStateRef.current;
 
-    // Update camera smoothly in game loop (not during drop to reduce lag)
-    // NO camera movement until height 11, then use smooth movement
-    // stack.length includes base block: height 1 = length 2, height 10 = length 11, height 11 = length 12
+    // Update camera smoothly in game loop
+    // Camera should ONLY move UP, never down - prevents any jumps
+    // Start scrolling when we have more than 8 blocks (stack.length > 9)
     const stackHeight = stack.length;
     const currentCameraY = cameraY;
     
-    if (stackHeight > 11) {
-      // Start scrolling at height 11 (stack.length = 12) - keep top blocks visible
+    if (stackHeight > 9) {
+      // Calculate target camera position to keep top blocks visible
       const topBlock = stack[stackHeight - 1];
-      // Keep top blocks around Y=150
-      const desiredTopY = 150;
+      const desiredTopY = 100; // Keep top blocks around this Y position
       const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
       
-      // Smooth transition: move camera gradually (max one block per frame)
-      const maxMove = BLOCK_HEIGHT * 0.8;
+      // CRITICAL: Camera should ONLY increase (move up), never decrease
+      // Use smooth transition but only allow upward movement
       if (targetCameraY > currentCameraY) {
+        // Smooth upward movement - max one block height per frame
+        const maxMove = BLOCK_HEIGHT * 0.8;
         gameStateRef.current.cameraY = Math.min(targetCameraY, currentCameraY + maxMove);
-      } else if (targetCameraY < currentCameraY) {
-        gameStateRef.current.cameraY = Math.max(targetCameraY, currentCameraY - maxMove);
-      } else {
-        gameStateRef.current.cameraY = targetCameraY;
       }
+      // Never move camera down - this prevents jumps
     } else {
-      // No camera movement until height 11 (stack.length = 12) - FORCE to 0
-      gameStateRef.current.cameraY = 0;
+      // Keep camera at 0 until we have more than 9 blocks
+      // Only set to 0 if it's currently 0 or less (don't force it down)
+      if (currentCameraY <= 0) {
+        gameStateRef.current.cameraY = 0;
+      }
     }
 
     // Update current block position - use integer math
