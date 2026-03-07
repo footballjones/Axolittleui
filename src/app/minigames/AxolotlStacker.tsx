@@ -200,6 +200,23 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const newScore = score + 1;
     setScore(newScore);
 
+    // Scroll camera up to keep current block and top of stack visible
+    // Start scrolling when we have more than 8 blocks, keep ~8-10 blocks visible
+    const stackHeight = gameStateRef.current.stack.length;
+    if (stackHeight > 8) {
+      // Calculate camera to keep the top blocks near the top of screen
+      // The current block is at top.y - BLOCK_HEIGHT, we want it visible
+      const topBlock = gameStateRef.current.stack[stackHeight - 1];
+      const desiredTopY = 100; // Keep top blocks around this Y position
+      const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
+      // Camera should only increase (move up), never decrease
+      // This prevents the one-time jump in the wrong direction
+      gameStateRef.current.cameraY = Math.max(gameStateRef.current.cameraY, targetCameraY);
+    } else {
+      // Keep camera at 0 until we have more than 8 blocks
+      gameStateRef.current.cameraY = 0;
+    }
+
     // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
     
