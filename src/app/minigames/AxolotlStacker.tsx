@@ -125,14 +125,19 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
   const dropBlock = useCallback(() => {
     if (!isPlaying || isPaused || !gameStateRef.current.current) return;
 
+    // Get a snapshot of current state to avoid race conditions
     const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
-    const c = gameStateRef.current.current;
+    const c = { ...gameStateRef.current.current }; // Create a copy to avoid mutation during calculation
 
-    // Calculate overlap
+    // Calculate overlap with better precision handling
     const overlapLeft = Math.max(c.x, top.x);
     const overlapRight = Math.min(c.x + c.width, top.x + top.width);
-    const overlapWidth = overlapRight - overlapLeft;
+    let overlapWidth = overlapRight - overlapLeft;
+    
+    // Round to avoid floating point precision issues
+    overlapWidth = Math.round(overlapWidth * 100) / 100;
 
+    // Use a more lenient threshold for mobile (5px instead of 10px) and ensure we have valid overlap
     if (overlapWidth <= 0) {
       // Complete miss - add entire block as falling piece
       gameStateRef.current.fallingPieces.push({
@@ -146,33 +151,40 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Place the overlapping portion
+    // Place the overlapping portion - ensure minimum width
+    const placedWidth = Math.max(overlapWidth, 0);
     gameStateRef.current.stack.push({
       x: overlapLeft,
-      width: overlapWidth,
+      width: placedWidth,
       y: c.y,
     });
 
     // Trim pieces fall off
     if (c.x < top.x) {
       // Left overhang
-      gameStateRef.current.fallingPieces.push({
-        x: c.x,
-        width: top.x - c.x,
-        y: c.y,
-        vy: 0,
-        color: COLORS[score % COLORS.length],
-      });
+      const leftOverhang = top.x - c.x;
+      if (leftOverhang > 0.1) { // Only add if significant
+        gameStateRef.current.fallingPieces.push({
+          x: c.x,
+          width: leftOverhang,
+          y: c.y,
+          vy: 0,
+          color: COLORS[score % COLORS.length],
+        });
+      }
     }
     if (c.x + c.width > top.x + top.width) {
       // Right overhang
-      gameStateRef.current.fallingPieces.push({
-        x: top.x + top.width,
-        width: (c.x + c.width) - (top.x + top.width),
-        y: c.y,
-        vy: 0,
-        color: COLORS[score % COLORS.length],
-      });
+      const rightOverhang = (c.x + c.width) - (top.x + top.width);
+      if (rightOverhang > 0.1) { // Only add if significant
+        gameStateRef.current.fallingPieces.push({
+          x: top.x + top.width,
+          width: rightOverhang,
+          y: c.y,
+          vy: 0,
+          color: COLORS[score % COLORS.length],
+        });
+      }
     }
 
     const newScore = score + 1;
@@ -182,7 +194,8 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const targetCameraY = Math.max(0, (gameStateRef.current.stack.length - 12) * BLOCK_HEIGHT);
     gameStateRef.current.cameraY = targetCameraY;
 
-    if (overlapWidth < 10) {
+    // Only end game if overlap is truly too narrow (reduced threshold for mobile tolerance)
+    if (overlapWidth < 5) {
       // Too narrow, end game
       endGame();
       return;
