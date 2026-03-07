@@ -1,7 +1,8 @@
 /**
- * Axolotl Stacker - Stack items high!
- * Items swing on pendulum/conveyor. Tap to drop. Stack as high as possible.
+ * Axolotl Stacker - Stack blocks high with precision timing
+ * Drop blocks onto a growing stack. Only overlapping portion stays, overhangs fall off.
  * Score = stack height reached
+ * Features: Canvas rendering, horizontal sliding, camera scroll, falling pieces
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -10,118 +11,313 @@ import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
 import { calculateRewards } from './config';
 
-const INITIAL_SWING_SPEED = 2; // degrees per frame
-const MAX_SWING_ANGLE = 60; // degrees
-const BLOCK_WIDTH = 12; // percentage
-const BLOCK_HEIGHT = 4; // percentage
-const STACK_START_Y = 85; // Start stacking from bottom
+const CANVAS_W = 360;
+const CANVAS_H = 640;
+const BASE_Y = CANVAS_H - 40;
+const BLOCK_HEIGHT = 28;
+const INITIAL_WIDTH = 120;
+const SWING_SPEED_BASE = 2.5;
 
-interface Block {
-  id: number;
-  x: number; // Center position
+interface StackBlock {
+  x: number;
   width: number;
+  y: number;
+}
+
+interface FallingPiece {
+  x: number;
+  width: number;
+  y: number;
+  vy: number;
   color: string;
 }
 
-interface SwingingBlock {
-  angle: number;
-  direction: number; // 1 or -1
+interface CurrentBlock {
+  x: number;
+  width: number;
+  y: number;
   speed: number;
+  direction: number; // 1 or -1
 }
 
 const COLORS = [
-  'bg-blue-400',
-  'bg-purple-400',
-  'bg-pink-400',
-  'bg-indigo-400',
-  'bg-cyan-400',
-  'bg-violet-400',
+  '#E8A0BF', '#A0D2DB', '#C5A3CF', '#F7C59F', '#B5EAD7',
+  '#FFB7B2', '#B5B9FF', '#FFDAC1', '#E2F0CB', '#C7CEEA',
 ];
 
 export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
-  const [score, setScore] = useState(0); // Stack height (number of blocks)
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [score, setScore] = useState(0); // Stack height
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [stack, setStack] = useState<Block[]>([]);
-  const [swingingBlock, setSwingingBlock] = useState<SwingingBlock>({
-    angle: 0,
-    direction: 1,
-    speed: INITIAL_SWING_SPEED,
-  });
-  const [nextBlockWidth, setNextBlockWidth] = useState(BLOCK_WIDTH);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false);
+  const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
-  const blockIdRef = useRef<number>(0);
+  const gameStateRef = useRef<{
+    stack: StackBlock[];
+    current: CurrentBlock | null;
+    fallingPieces: FallingPiece[];
+    cameraY: number;
+  }>({
+    stack: [],
+    current: null,
+    fallingPieces: [],
+    cameraY: 0,
+  });
+
+  const reset = useCallback(() => {
+    // Base block
+    gameStateRef.current = {
+      stack: [{
+        x: CANVAS_W / 2 - INITIAL_WIDTH / 2,
+        width: INITIAL_WIDTH,
+        y: BASE_Y,
+      }],
+      current: null,
+      fallingPieces: [],
+      cameraY: 0,
+    };
+    setScore(0);
+    spawnBlock(0);
+  }, [spawnBlock]);
+
+  const spawnBlock = useCallback((currentScore: number) => {
+    const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
+    const speed = SWING_SPEED_BASE + currentScore * 0.15;
+    const width = Math.max(20, top.width - (currentScore > 5 ? 2 : 0));
+    gameStateRef.current.current = {
+      x: 0,
+      width,
+      y: top.y - BLOCK_HEIGHT,
+      speed,
+      direction: 1,
+    };
+  }, []);
 
   const dropBlock = useCallback(() => {
-    if (!isPlaying || isPaused) return;
+    if (!isPlaying || isPaused || !gameStateRef.current.current) return;
 
-    const currentX = 50 + (swingingBlock.angle / MAX_SWING_ANGLE) * 30; // Convert angle to x position
-    
-    if (stack.length === 0) {
-      // First block - always lands
-      setStack([{
-        id: blockIdRef.current++,
-        x: currentX,
-        width: nextBlockWidth,
+    const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
+    const c = gameStateRef.current.current;
+
+    // Calculate overlap
+    const overlapLeft = Math.max(c.x, top.x);
+    const overlapRight = Math.min(c.x + c.width, top.x + top.width);
+    const overlapWidth = overlapRight - overlapLeft;
+
+    if (overlapWidth <= 0) {
+      // Complete miss - add entire block as falling piece
+      gameStateRef.current.fallingPieces.push({
+        x: c.x,
+        width: c.width,
+        y: c.y,
+        vy: 0,
         color: COLORS[score % COLORS.length],
-      }]);
-      setScore(1);
-    } else {
-      const topBlock = stack[stack.length - 1];
-      const overlap = Math.abs(currentX - topBlock.x);
-      const maxOverlap = (topBlock.width + nextBlockWidth) / 2;
-      
-      if (overlap > maxOverlap) {
-        // Missed - game over
-        setIsPlaying(false);
-        return;
-      }
-      
-      // Calculate new block position (centered on overlap)
-      const newX = (currentX + topBlock.x) / 2;
-      const newWidth = Math.min(nextBlockWidth, topBlock.width - Math.abs(currentX - topBlock.x) * 0.8);
-      
-      setStack(prev => [...prev, {
-        id: blockIdRef.current++,
-        x: newX,
-        width: Math.max(BLOCK_WIDTH * 0.5, newWidth), // Minimum width
-        color: COLORS[score % COLORS.length],
-      }]);
-      
-      setScore(prev => prev + 1);
+      });
+      endGame();
+      return;
     }
-    
-    // Reset swinging block with increased speed
-    const newSpeed = INITIAL_SWING_SPEED + (score * 0.1);
-    setSwingingBlock({
-      angle: 0,
-      direction: 1,
-      speed: Math.min(newSpeed, 6), // Cap speed
+
+    // Place the overlapping portion
+    gameStateRef.current.stack.push({
+      x: overlapLeft,
+      width: overlapWidth,
+      y: c.y,
     });
+
+    // Trim pieces fall off
+    if (c.x < top.x) {
+      // Left overhang
+      gameStateRef.current.fallingPieces.push({
+        x: c.x,
+        width: top.x - c.x,
+        y: c.y,
+        vy: 0,
+        color: COLORS[score % COLORS.length],
+      });
+    }
+    if (c.x + c.width > top.x + top.width) {
+      // Right overhang
+      gameStateRef.current.fallingPieces.push({
+        x: top.x + top.width,
+        width: (c.x + c.width) - (top.x + top.width),
+        y: c.y,
+        vy: 0,
+        color: COLORS[score % COLORS.length],
+      });
+    }
+
+    const newScore = score + 1;
+    setScore(newScore);
+
+    // Scroll camera up
+    const targetCameraY = Math.max(0, (gameStateRef.current.stack.length - 12) * BLOCK_HEIGHT);
+    gameStateRef.current.cameraY = targetCameraY;
+
+    if (overlapWidth < 10) {
+      // Too narrow, end game
+      endGame();
+      return;
+    }
+
+    spawnBlock(newScore);
+  }, [isPlaying, isPaused, score, spawnBlock, endGame]);
+
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    setGameEnded(true);
+    gameStateRef.current.current = null;
     
-    // Next block gets slightly smaller (difficulty scaling)
-    setNextBlockWidth(Math.max(BLOCK_WIDTH * 0.6, nextBlockWidth * 0.95));
-  }, [isPlaying, isPaused, swingingBlock, stack, score, nextBlockWidth]);
+    // Only calculate and show rewards if energy was available at start
+    if (hadEnergyAtStart) {
+      const rewards = calculateRewards('axolotl-stacker', score);
+      setFinalRewards({
+        tier: rewards.tier,
+        xp: rewards.xp,
+        coins: rewards.coins,
+        opals: rewards.opals,
+      });
+    } else {
+      setFinalRewards({
+        tier: 'normal',
+        xp: 0,
+        coins: 0,
+        opals: undefined,
+      });
+    }
+    setShowOverlay(true);
+  }, [score, hadEnergyAtStart]);
+
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => {
+    const { stack, current, fallingPieces, cameraY } = gameStateRef.current;
+    
+    // Background
+    ctx.fillStyle = '#0e2233';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
+    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(CANVAS_W, y);
+      ctx.stroke();
+    }
+
+    ctx.save();
+    ctx.translate(0, -cameraY);
+
+    // Draw placed stack
+    for (let i = 0; i < stack.length; i++) {
+      const b = stack[i];
+      const color = i === 0 ? '#556' : COLORS[(i - 1) % COLORS.length];
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
+      } else {
+        // Fallback for browsers without roundRect
+        ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
+      }
+      ctx.fill();
+
+      // Highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
+    }
+
+    // Draw current swinging block
+    if (current && isPlaying) {
+      ctx.fillStyle = COLORS[score % COLORS.length];
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2, 4);
+      } else {
+        ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
+      }
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Drop guide lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(current.x, current.y + BLOCK_HEIGHT);
+      ctx.lineTo(current.x, BASE_Y);
+      ctx.moveTo(current.x + current.width, current.y + BLOCK_HEIGHT);
+      ctx.lineTo(current.x + current.width, BASE_Y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Falling pieces
+    for (const p of fallingPieces) {
+      ctx.fillStyle = p.color || '#888';
+      ctx.globalAlpha = 0.6;
+      ctx.fillRect(p.x, p.y, p.width, BLOCK_HEIGHT - 2);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // Height marker
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`Height: ${score}`, CANVAS_W - 10, 24);
+  }, [isPlaying, score]);
 
   const gameLoop = useCallback(() => {
     if (!isPlaying || isPaused) return;
 
-    setSwingingBlock(prev => {
-      let newAngle = prev.angle + (prev.speed * prev.direction);
-      
-      if (newAngle >= MAX_SWING_ANGLE) {
-        newAngle = MAX_SWING_ANGLE;
-        return { ...prev, angle: newAngle, direction: -1 };
-      } else if (newAngle <= -MAX_SWING_ANGLE) {
-        newAngle = -MAX_SWING_ANGLE;
-        return { ...prev, angle: newAngle, direction: 1 };
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    const { current, fallingPieces } = gameStateRef.current;
+
+    // Update current block position
+    if (current) {
+      current.x += current.speed * current.direction;
+      if (current.x + current.width > CANVAS_W) {
+        current.direction = -1;
+      } else if (current.x < 0) {
+        current.direction = 1;
       }
-      
-      return { ...prev, angle: newAngle };
-    });
+    }
+
+    // Update falling pieces
+    for (const p of fallingPieces) {
+      p.vy += 0.4;
+      p.y += p.vy;
+    }
+    gameStateRef.current.fallingPieces = fallingPieces.filter(
+      p => p.y < CANVAS_H + gameStateRef.current.cameraY + 100
+    );
+
+    // Draw everything
+    draw(ctx);
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [isPlaying, isPaused]);
+  }, [isPlaying, isPaused, draw]);
+
+  const startGame = useCallback(() => {
+    setHadEnergyAtStart(energy > 0);
+    reset();
+    setShowOverlay(false);
+    setGameEnded(false);
+    setFinalRewards(null);
+    setIsPlaying(true);
+    setIsPaused(false);
+  }, [reset, energy]);
 
   // Start game loop
   useEffect(() => {
@@ -135,21 +331,23 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     };
   }, [isPlaying, isPaused, gameLoop]);
 
-  // End game
+  // Polyfill for roundRect if needed
   useEffect(() => {
-    if (!isPlaying) {
-      const rewards = calculateRewards('axolotl-stacker', score);
-      onEnd({
-        score,
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
+    if (typeof CanvasRenderingContext2D.prototype.roundRect === 'undefined') {
+      CanvasRenderingContext2D.prototype.roundRect = function(x: number, y: number, w: number, h: number, r: number) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+      };
     }
-  }, [isPlaying, score, onEnd]);
-
-  const swingingX = 50 + (swingingBlock.angle / MAX_SWING_ANGLE) * 30;
+  }, []);
 
   return (
     <GameWrapper
@@ -160,97 +358,194 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       onPause={() => setIsPaused(!isPaused)}
       isPaused={isPaused}
     >
-      <div className="relative w-full h-full overflow-hidden bg-gradient-to-b from-blue-200 via-indigo-200 to-purple-200">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-20">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-full bg-white"
-              style={{ left: `${i * 10}%` }}
-            />
-          ))}
-        </div>
-
-        {/* Stacked blocks */}
-        {stack.map((block, index) => {
-          const y = STACK_START_Y - (index * BLOCK_HEIGHT);
-          return (
-            <motion.div
-              key={block.id}
-              className={`absolute ${block.color} rounded-lg border-2 border-white/50 shadow-lg`}
-              style={{
-                left: `${block.x - block.width / 2}%`,
-                top: `${y}%`,
-                width: `${block.width}%`,
-                height: `${BLOCK_HEIGHT}%`,
-              }}
-              initial={{ scale: 0.8, y: -20 }}
-              animate={{ scale: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            />
-          );
-        })}
-
-        {/* Swinging block */}
-        <motion.div
-          className="absolute"
-          style={{
-            left: `${swingingX - nextBlockWidth / 2}%`,
-            top: '15%',
-            width: `${nextBlockWidth}%`,
-            height: `${BLOCK_HEIGHT}%`,
-          }}
-          animate={{
-            y: [0, -5, 0],
-          }}
-          transition={{
-            duration: 0.5,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        >
-          <div className={`${COLORS[score % COLORS.length]} rounded-lg border-2 border-white/50 shadow-xl relative`} style={{ width: '100%', height: '100%' }}>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">⬇️</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Pendulum line */}
-        <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-          <line
-            x1="50%"
-            y1="5%"
-            x2={`${swingingX}%`}
-            y2="17%"
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth="2"
-          />
-        </svg>
-
-        {/* Instructions */}
-        {score === 0 && (
+      <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100" style={{ margin: 0, padding: 0 }}>
+        {/* Start/End Overlay */}
+        {showOverlay && (
           <motion.div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 1, delay: 2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-purple-900/80 to-pink-900/80 backdrop-blur-md z-20 flex items-center justify-center"
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-6 py-4 border-2 border-indigo-400">
-              <p className="text-indigo-800 font-bold text-lg text-center">
-                Tap when block aligns! 🥞
-              </p>
-            </div>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-purple-300/80 shadow-2xl relative overflow-hidden"
+            >
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-200/30 rounded-full blur-xl -ml-12 -mb-12" />
+              
+              <div className="relative z-10">
+                {!isPlaying && !gameEnded ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="text-6xl mb-4"
+                      >
+                        🥞
+                      </motion.div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mb-4">
+                        Axolotl Stacker
+                      </h2>
+                      <div className="space-y-2 text-purple-700 text-sm font-medium">
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">👆</span>
+                          Tap to drop each block
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">🎯</span>
+                          Line them up to stack higher!
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">⚠️</span>
+                          Overhangs fall off
+                        </p>
+                      </div>
+                    </div>
+                    <motion.button
+                      onClick={startGame}
+                      className="w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-white font-bold py-4 rounded-xl text-lg shadow-lg relative overflow-hidden group"
+                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>Start Game</span>
+                        <span className="text-xl">🚀</span>
+                      </span>
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </motion.button>
+                  </>
+                ) : gameEnded && finalRewards ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <div className="text-6xl mb-4">
+                        {score >= 20 ? '✨' : score >= 10 ? '🎉' : '🎮'}
+                      </div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mb-4">
+                        Game Over!
+                      </h2>
+                      <p className="text-purple-800 text-center mb-2 text-2xl font-bold">
+                        Stack height: {score}
+                      </p>
+                      <p className="text-purple-600 text-center mb-4 text-sm font-medium">
+                        {score >= 20 ? '🌟 Exceptional performance!' : score >= 10 ? '🎯 Good job!' : '💪 Keep practicing!'}
+                      </p>
+                      
+                      {/* Rewards display - only show if energy was used */}
+                      {hadEnergyAtStart && finalRewards && (finalRewards.xp > 0 || finalRewards.coins > 0) ? (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
+                          <p className="text-purple-700 font-bold text-lg mb-2">Rewards:</p>
+                          <div className="flex flex-col gap-2 text-purple-800">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">⭐</span>
+                              <span className="font-semibold">+{finalRewards.xp} XP</span>
+                            </div>
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">💰</span>
+                              <span className="font-semibold">+{finalRewards.coins} Coins</span>
+                            </div>
+                            {finalRewards.opals && (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">🪬</span>
+                                <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                              </div>
+                            )}
+                            <p className="text-xs text-purple-600 mt-1">
+                              Tier: {finalRewards.tier.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
+                          <p className="text-purple-700 font-bold text-lg mb-2">No Energy!</p>
+                          <p className="text-purple-600 text-center text-sm">
+                            Played for fun but no rewards earned.<br />
+                            Energy regenerates over time.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <motion.button
+                        onClick={() => {
+                          setGameEnded(false);
+                          setFinalRewards(null);
+                          startGame();
+                        }}
+                        className="flex-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg relative overflow-hidden group"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <span className="relative z-10">Play Again</span>
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        />
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          // Call onEnd with actual rewards when leaving (only if energy was used)
+                          if (hadEnergyAtStart && finalRewards) {
+                            onEnd({
+                              score,
+                              tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
+                              xp: finalRewards.xp,
+                              coins: finalRewards.coins,
+                              opals: finalRewards.opals,
+                            });
+                          } else {
+                            // No rewards if no energy
+                            onEnd({
+                              score,
+                              tier: 'normal',
+                              xp: 0,
+                              coins: 0,
+                            });
+                          }
+                        }}
+                        className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        Back to Games
+                      </motion.button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
-        {/* Tap area */}
-        <div
-          className="absolute inset-0 z-10"
+        {/* Canvas */}
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          style={{ 
+            touchAction: 'none',
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            margin: 0,
+            padding: 0,
+          }}
           onClick={dropBlock}
-          onTouchStart={dropBlock}
-          style={{ touchAction: 'manipulation' }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            dropBlock();
+          }}
         />
       </div>
     </GameWrapper>
