@@ -200,20 +200,6 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const newScore = score + 1;
     setScore(newScore);
 
-    // Scroll camera up to keep current block and top of stack visible
-    // Start scrolling when we have more than 8 blocks, keep ~8-10 blocks visible
-    const stackHeight = gameStateRef.current.stack.length;
-    if (stackHeight > 8) {
-      // Calculate camera to keep the top blocks near the top of screen
-      // The current block is at top.y - BLOCK_HEIGHT, we want it visible
-      const topBlock = gameStateRef.current.stack[stackHeight - 1];
-      const desiredTopY = 100; // Keep top blocks around this Y position
-      const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
-      gameStateRef.current.cameraY = targetCameraY;
-    } else {
-      gameStateRef.current.cameraY = 0;
-    }
-
     // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
     
@@ -224,6 +210,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
   }, [isPlaying, isPaused, score, spawnBlock, endGame]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Get fresh cameraY from ref (updated in game loop)
     const { stack, current, fallingPieces, cameraY } = gameStateRef.current;
     
     // Background
@@ -301,7 +288,37 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     // Clear canvas
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-    const { current, fallingPieces, cameraY } = gameStateRef.current;
+    const { current, fallingPieces, stack, cameraY } = gameStateRef.current;
+
+    // Update camera smoothly in game loop (not during drop to reduce lag)
+    // Start scrolling gradually from block 8, smooth transition prevents jumps
+    const stackHeight = stack.length;
+    const currentCameraY = cameraY;
+    
+    if (stackHeight > 8) {
+      // Calculate target camera position to keep top blocks visible
+      const topBlock = stack[stackHeight - 1];
+      // Keep top blocks around Y=150, but start scrolling gradually
+      const desiredTopY = 150;
+      const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
+      
+      // Smooth transition: move camera gradually (max one block per frame) to prevent jumps
+      const maxMove = BLOCK_HEIGHT * 0.8; // Smooth movement
+      if (targetCameraY > currentCameraY) {
+        gameStateRef.current.cameraY = Math.min(targetCameraY, currentCameraY + maxMove);
+      } else if (targetCameraY < currentCameraY) {
+        gameStateRef.current.cameraY = Math.max(targetCameraY, currentCameraY - maxMove);
+      } else {
+        gameStateRef.current.cameraY = targetCameraY;
+      }
+    } else {
+      // Gradually return to 0 if stack shrinks
+      if (currentCameraY > 0) {
+        gameStateRef.current.cameraY = Math.max(0, currentCameraY - BLOCK_HEIGHT * 0.5);
+      } else {
+        gameStateRef.current.cameraY = 0;
+      }
+    }
 
     // Update current block position - use integer math
     if (current) {
@@ -329,7 +346,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       }
     }
 
-    // Draw everything
+    // Draw everything (use updated cameraY from gameStateRef)
     draw(ctx);
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
