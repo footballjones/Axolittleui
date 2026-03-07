@@ -575,15 +575,15 @@ export default function App() {
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
                           style={{
                             background: showInventoryPanel
-                              ? 'linear-gradient(135deg, rgba(167,243,208,0.9) 0%, rgba(94,234,212,0.75) 100%)'
-                              : 'linear-gradient(135deg, rgba(167,243,208,0.75) 0%, rgba(94,234,212,0.55) 100%)',
-                            border: showInventoryPanel ? '1px solid rgba(20,184,166,0.55)' : '1px solid rgba(20,184,166,0.35)',
+                              ? 'linear-gradient(135deg, rgba(20,184,166,0.85) 0%, rgba(13,148,136,0.75) 100%)'
+                              : 'linear-gradient(135deg, rgba(20,184,166,0.7) 0%, rgba(13,148,136,0.55) 100%)',
+                            border: showInventoryPanel ? '1px solid rgba(13,148,136,0.6)' : '1px solid rgba(13,148,136,0.45)',
                           }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">🪸</span>
-                          <span className="text-[11px] font-bold text-teal-700 tracking-wider uppercase">Decorations</span>
+                          <span className="text-[11px] font-bold text-teal-800 tracking-wider uppercase">Decorations</span>
                         </motion.button>
 
                         {/* EGGS */}
@@ -592,15 +592,15 @@ export default function App() {
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
                           style={{
                             background: showEggsPanel
-                              ? 'linear-gradient(135deg, rgba(233,213,255,0.9) 0%, rgba(216,180,254,0.75) 100%)'
-                              : 'linear-gradient(135deg, rgba(233,213,255,0.75) 0%, rgba(216,180,254,0.55) 100%)',
-                            border: showEggsPanel ? '1px solid rgba(168,85,247,0.55)' : '1px solid rgba(168,85,247,0.35)',
+                              ? 'linear-gradient(135deg, rgba(99,102,241,0.85) 0%, rgba(79,70,229,0.75) 100%)'
+                              : 'linear-gradient(135deg, rgba(99,102,241,0.7) 0%, rgba(79,70,229,0.55) 100%)',
+                            border: showEggsPanel ? '1px solid rgba(79,70,229,0.6)' : '1px solid rgba(79,70,229,0.45)',
                           }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">🥚</span>
-                          <span className="text-[11px] font-bold text-violet-700 tracking-wider uppercase">Eggs</span>
+                          <span className="text-[11px] font-bold text-indigo-800 tracking-wider uppercase">Eggs</span>
                         </motion.button>
 
                         {/* SPIN WHEEL */}
@@ -608,14 +608,14 @@ export default function App() {
                           onClick={() => setShowSpinWheel(true)}
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(251,207,232,0.75) 0%, rgba(249,168,212,0.55) 100%)',
-                            border: '1px solid rgba(244,114,182,0.35)',
+                            background: 'linear-gradient(135deg, rgba(139,92,246,0.75) 0%, rgba(124,58,237,0.55) 100%)',
+                            border: '1px solid rgba(124,58,237,0.45)',
                           }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">🎰</span>
-                          <span className="text-[11px] font-bold text-pink-700 tracking-wider uppercase">Spin Wheel</span>
+                          <span className="text-[11px] font-bold text-violet-800 tracking-wider uppercase">Spin Wheel</span>
                           {gameState && canSpinToday(gameState.lastSpinDate) && (
                             <motion.div
                               className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-md"
@@ -630,14 +630,14 @@ export default function App() {
                           onClick={() => setShowDailyLogin(true)}
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(254,243,199,0.75) 0%, rgba(251,191,36,0.55) 100%)',
-                            border: '1px solid rgba(245,158,11,0.35)',
+                            background: 'linear-gradient(135deg, rgba(245,158,11,0.75) 0%, rgba(217,119,6,0.55) 100%)',
+                            border: '1px solid rgba(217,119,6,0.45)',
                           }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">🎁</span>
-                          <span className="text-[11px] font-bold text-amber-700 tracking-wider uppercase">Daily Bonus</span>
+                          <span className="text-[11px] font-bold text-amber-800 tracking-wider uppercase">Daily Bonus</span>
                           {gameState && canClaimDailyLogin(gameState.lastLoginDate) && (
                             <motion.div
                               className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-md"
@@ -651,19 +651,19 @@ export default function App() {
                         <motion.button
                           onClick={() => { setActiveModal('stats'); setShowHamburgerMenu(false); setShowNotifPanel(false); }}
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
-                          style={{ background: 'linear-gradient(135deg, rgba(167,243,208,0.75) 0%, rgba(110,231,183,0.6) 100%)', border: '1px solid rgba(52,211,153,0.4)' }}
+                          style={{ background: 'linear-gradient(135deg, rgba(14,165,233,0.75) 0%, rgba(2,132,199,0.6) 100%)', border: '1px solid rgba(2,132,199,0.45)' }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">📊</span>
-                          <span className="text-[11px] font-bold text-emerald-700 tracking-wider uppercase">Stats</span>
+                          <span className="text-[11px] font-bold text-sky-800 tracking-wider uppercase">Stats</span>
                         </motion.button>
 
                         {/* SOCIAL */}
                         <motion.button
                           onClick={() => { setActiveModal('social'); setShowHamburgerMenu(false); setShowNotifPanel(false); setHasPendingPokes(false); }}
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
-                          style={{ background: 'linear-gradient(135deg, rgba(251,207,232,0.75) 0%, rgba(249,168,212,0.6) 100%)', border: '1px solid rgba(244,114,182,0.4)' }}
+                          style={{ background: 'linear-gradient(135deg, rgba(236,72,153,0.75) 0%, rgba(219,39,119,0.6) 100%)', border: '1px solid rgba(219,39,119,0.45)' }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
@@ -675,7 +675,7 @@ export default function App() {
                             />
                           )}
                           <span className="text-[2rem]">👥</span>
-                          <span className="text-[11px] font-bold text-pink-700 tracking-wider uppercase">Social</span>
+                          <span className="text-[11px] font-bold text-pink-800 tracking-wider uppercase">Social</span>
                         </motion.button>
 
                         {/* HOW TO PLAY */}
@@ -684,27 +684,27 @@ export default function App() {
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
                           style={{
                             background: showHowToPlayPanel
-                              ? 'linear-gradient(135deg, rgba(224,242,254,0.9) 0%, rgba(186,230,253,0.75) 100%)'
-                              : 'linear-gradient(135deg, rgba(224,242,254,0.75) 0%, rgba(186,230,253,0.55) 100%)',
-                            border: showHowToPlayPanel ? '1px solid rgba(14,165,233,0.55)' : '1px solid rgba(14,165,233,0.35)',
+                              ? 'linear-gradient(135deg, rgba(6,182,212,0.85) 0%, rgba(8,145,178,0.75) 100%)'
+                              : 'linear-gradient(135deg, rgba(6,182,212,0.7) 0%, rgba(8,145,178,0.55) 100%)',
+                            border: showHowToPlayPanel ? '1px solid rgba(8,145,178,0.6)' : '1px solid rgba(8,145,178,0.45)',
                           }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">💡</span>
-                          <span className="text-[11px] font-bold text-sky-700 tracking-wider uppercase">How to Play</span>
+                          <span className="text-[11px] font-bold text-cyan-800 tracking-wider uppercase">How to Play</span>
                         </motion.button>
 
                         {/* SETTINGS */}
                         <motion.button
                           onClick={() => { setActiveModal('settings'); setShowHamburgerMenu(false); setShowNotifPanel(false); }}
                           className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
-                          style={{ background: 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)', border: '1px solid rgba(148,163,184,0.4)' }}
+                          style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.75) 0%, rgba(71,85,105,0.6) 100%)', border: '1px solid rgba(71,85,105,0.45)' }}
                           whileTap={{ scale: 0.93 }}
                         >
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">⚙️</span>
-                          <span className="text-[11px] font-bold text-slate-600 tracking-wider uppercase">Settings</span>
+                          <span className="text-[11px] font-bold text-slate-700 tracking-wider uppercase">Settings</span>
                         </motion.button>
 
                         {/* REBIRTH — full-width when available */}
