@@ -19,8 +19,9 @@ interface GameTileProps {
   energy: number;
 }
 
-function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame, energy }: GameTileProps) {
+function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame, energy = 0 }: GameTileProps) {
   const isExpanded = expandedId === game.id;
+  const hasEnergy = (energy ?? 0) > 0;
 
   return (
     <motion.div
@@ -31,9 +32,9 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
       className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-900/5 overflow-hidden"
     >
       <button
-        onClick={() => energy > 0 && onSelectGame(game.id)}
-        disabled={energy <= 0}
-        className={`w-full p-3 text-left group transition-colors ${energy > 0 ? 'active:bg-white/20 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+        onClick={() => hasEnergy && onSelectGame(game.id)}
+        disabled={!hasEnergy}
+        className={`w-full p-3 text-left group transition-colors ${hasEnergy ? 'active:bg-white/20 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
       >
         <div className="flex flex-col items-center text-center gap-1.5">
           <div className={`bg-gradient-to-br ${game.color} rounded-xl w-11 h-11 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
