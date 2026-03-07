@@ -127,17 +127,19 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     // Get a snapshot of current state to avoid race conditions
     const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
-    const c = { ...gameStateRef.current.current }; // Create a copy to avoid mutation during calculation
+    const c = gameStateRef.current.current;
 
-    // Calculate overlap with better precision handling
-    const overlapLeft = Math.max(c.x, top.x);
-    const overlapRight = Math.min(c.x + c.width, top.x + top.width);
-    let overlapWidth = overlapRight - overlapLeft;
+    // Calculate overlap - use integer math for better performance and accuracy
+    const cLeft = Math.floor(c.x);
+    const cRight = Math.floor(c.x + c.width);
+    const topLeft = Math.floor(top.x);
+    const topRight = Math.floor(top.x + top.width);
     
-    // Round to avoid floating point precision issues
-    overlapWidth = Math.round(overlapWidth * 100) / 100;
+    const overlapLeft = Math.max(cLeft, topLeft);
+    const overlapRight = Math.min(cRight, topRight);
+    const overlapWidth = overlapRight - overlapLeft;
 
-    // Use a more lenient threshold for mobile (5px instead of 10px) and ensure we have valid overlap
+    // Only end game on complete miss (no overlap at all)
     if (overlapWidth <= 0) {
       // Complete miss - add entire block as falling piece
       gameStateRef.current.fallingPieces.push({
@@ -151,40 +153,33 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Place the overlapping portion - ensure minimum width
-    const placedWidth = Math.max(overlapWidth, 0);
+    // Place the overlapping portion
     gameStateRef.current.stack.push({
       x: overlapLeft,
-      width: placedWidth,
+      width: overlapWidth,
       y: c.y,
     });
 
     // Trim pieces fall off
-    if (c.x < top.x) {
+    if (cLeft < topLeft) {
       // Left overhang
-      const leftOverhang = top.x - c.x;
-      if (leftOverhang > 0.1) { // Only add if significant
-        gameStateRef.current.fallingPieces.push({
-          x: c.x,
-          width: leftOverhang,
-          y: c.y,
-          vy: 0,
-          color: COLORS[score % COLORS.length],
-        });
-      }
+      gameStateRef.current.fallingPieces.push({
+        x: c.x,
+        width: topLeft - c.x,
+        y: c.y,
+        vy: 0,
+        color: COLORS[score % COLORS.length],
+      });
     }
-    if (c.x + c.width > top.x + top.width) {
+    if (cRight > topRight) {
       // Right overhang
-      const rightOverhang = (c.x + c.width) - (top.x + top.width);
-      if (rightOverhang > 0.1) { // Only add if significant
-        gameStateRef.current.fallingPieces.push({
-          x: top.x + top.width,
-          width: rightOverhang,
-          y: c.y,
-          vy: 0,
-          color: COLORS[score % COLORS.length],
-        });
-      }
+      gameStateRef.current.fallingPieces.push({
+        x: topRight,
+        width: c.x + c.width - topRight,
+        y: c.y,
+        vy: 0,
+        color: COLORS[score % COLORS.length],
+      });
     }
 
     const newScore = score + 1;
@@ -194,13 +189,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const targetCameraY = Math.max(0, (gameStateRef.current.stack.length - 12) * BLOCK_HEIGHT);
     gameStateRef.current.cameraY = targetCameraY;
 
-    // Only end game if overlap is truly too narrow (reduced threshold for mobile tolerance)
-    if (overlapWidth < 5) {
-      // Too narrow, end game
-      endGame();
-      return;
-    }
-
+    // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
   }, [isPlaying, isPaused, score, spawnBlock, endGame]);
 
@@ -211,9 +200,9 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.fillStyle = '#0e2233';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Grid lines - reduced frequency for performance
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.03)';
-    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT * 2) { // Draw every other line
+    // Grid lines - skip on mobile for performance (only draw every 4th line)
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.02)';
+    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT * 4) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(CANVAS_W, y);
@@ -253,16 +242,18 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
       ctx.globalAlpha = 1;
 
-      // Drop guide lines - simplified for performance
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.setLineDash([6, 6]); // Longer dashes = fewer calculations
-      ctx.beginPath();
-      ctx.moveTo(current.x, current.y + BLOCK_HEIGHT);
-      ctx.lineTo(current.x, BASE_Y);
-      ctx.moveTo(current.x + current.width, current.y + BLOCK_HEIGHT);
-      ctx.lineTo(current.x + current.width, BASE_Y);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // Drop guide lines - skip on mobile for performance (only show on first few blocks)
+      if (score < 5) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(current.x, current.y + BLOCK_HEIGHT);
+        ctx.lineTo(current.x, BASE_Y);
+        ctx.moveTo(current.x + current.width, current.y + BLOCK_HEIGHT);
+        ctx.lineTo(current.x + current.width, BASE_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     // Falling pieces - only draw if visible
@@ -283,8 +274,20 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.fillText(`Height: ${score}`, CANVAS_W - 10, 24);
   }, [isPlaying, score]);
 
-  const gameLoop = useCallback(() => {
+  const lastFrameTimeRef = useRef<number>(0);
+  const targetFPS = 30; // Reduce to 30 FPS for mobile performance
+  const frameInterval = 1000 / targetFPS;
+
+  const gameLoop = useCallback((timestamp: number) => {
     if (!isPlaying || isPaused) return;
+
+    // Throttle frame rate for mobile performance
+    const elapsed = timestamp - lastFrameTimeRef.current;
+    if (elapsed < frameInterval) {
+      animationFrameRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+    lastFrameTimeRef.current = timestamp - (elapsed % frameInterval);
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -296,27 +299,26 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     const { current, fallingPieces, cameraY } = gameStateRef.current;
 
-    // Update current block position
+    // Update current block position - use integer math
     if (current) {
       current.x += current.speed * current.direction;
-      // Optimize boundary checks
+      // Optimize boundary checks with integer clamping
       if (current.x + current.width >= CANVAS_W) {
         current.direction = -1;
-        current.x = CANVAS_W - current.width; // Clamp to prevent overshoot
+        current.x = CANVAS_W - current.width;
       } else if (current.x <= 0) {
         current.direction = 1;
-        current.x = 0; // Clamp to prevent overshoot
+        current.x = 0;
       }
     }
 
-    // Update falling pieces - batch filter for better performance
+    // Update falling pieces - simplified for performance
     if (fallingPieces.length > 0) {
       const cameraBottom = CANVAS_H + cameraY + 100;
       for (let i = fallingPieces.length - 1; i >= 0; i--) {
         const p = fallingPieces[i];
         p.vy += 0.4;
         p.y += p.vy;
-        // Remove if off-screen
         if (p.y > cameraBottom) {
           fallingPieces.splice(i, 1);
         }
@@ -342,6 +344,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
   // Start game loop
   useEffect(() => {
     if (isPlaying && !isPaused) {
+      lastFrameTimeRef.current = performance.now();
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     }
     return () => {
