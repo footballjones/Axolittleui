@@ -21,7 +21,9 @@ interface GameTileProps {
 
 function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame, energy = 0 }: GameTileProps) {
   const isExpanded = expandedId === game.id;
-  const hasEnergy = (energy ?? 0) > 0;
+  // Safely handle energy prop with multiple fallbacks to prevent undefined errors
+  const safeEnergy = typeof energy === 'number' ? energy : 0;
+  const hasEnergy = safeEnergy > 0;
 
   return (
     <motion.div

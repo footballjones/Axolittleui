@@ -315,11 +315,11 @@ export default function App() {
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center p-0 sm:p-4">
       <div className="w-full h-full sm:max-h-[calc(100vh-2rem)] sm:h-auto max-w-md flex flex-col min-h-0" style={{ height: '100%', maxHeight: '100vh' }}>
         {/* Game Container */}
-        <div className="relative flex-1 flex flex-col min-h-0">
+        <div className="relative flex-1 flex flex-col min-h-0" style={{ minHeight: 0, height: '100%' }}>
           {/* Subtle glow effect */}
           <div className="absolute -inset-0.5 bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 rounded-none sm:rounded-[2rem] blur opacity-40 z-0" />
           
-          <div className="relative z-10 bg-white backdrop-blur-2xl rounded-none sm:rounded-[2rem] shadow-2xl border-0 sm:border border-white/60 flex flex-col h-full min-h-0" style={{ overflow: 'visible' }}>
+          <div className="relative z-10 bg-white backdrop-blur-2xl rounded-none sm:rounded-[2rem] shadow-2xl border-0 sm:border border-white/60 flex flex-col" style={{ height: '100%', minHeight: 0, overflow: 'visible', flex: 1 }}>
             {/* Floating Header HUD - overlays content */}
             <div className="absolute top-0 left-0 right-0 z-40 px-3 sm:px-5 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 pointer-events-none rounded-t-none sm:rounded-t-[2rem] overflow-hidden">
               {/* Gradient fade behind header */}
@@ -923,10 +923,16 @@ export default function App() {
             </AnimatePresence>
 
             {/* Spacer for absolutely positioned header */}
-            <div style={{ height: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)', flexShrink: 0 }} />
+            <div style={{ height: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)', flexShrink: 0, minHeight: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)' }} />
             
             {/* Content Area - Changes based on currentScreen */}
-            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ minHeight: 0, overflow: 'visible', position: 'relative' }}>
+            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ 
+              minHeight: 0, 
+              overflow: 'visible', 
+              position: 'relative',
+              flex: '1 1 auto',
+              height: '100%',
+            }}>
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
