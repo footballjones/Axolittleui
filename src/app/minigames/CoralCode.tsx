@@ -4,7 +4,7 @@
  * Score = 10 - guesses used (higher is better)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
@@ -54,33 +54,31 @@ interface Guess {
 }
 
 export function CoralCode({ onEnd, energy }: MiniGameProps) {
-  const [secretCode, setSecretCode] = useState<string[]>([]);
+  const [secretCode, setSecretCode] = useState<string[]>(() => generateSecretCode());
   const [currentGuess, setCurrentGuess] = useState<string[]>([]);
   const [guesses, setGuesses] = useState<Guess[]>([]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
+  const [hasEnded, setHasEnded] = useState(false);
   const guessIdRef = useRef<number>(0);
 
-  // Initialize secret code
-  useEffect(() => {
-    if (secretCode.length === 0) {
-      setSecretCode(generateSecretCode());
-    }
-  }, [secretCode.length]);
-
   const addColorToGuess = useCallback((color: string) => {
-    if (currentGuess.length < CODE_LENGTH) {
-      setCurrentGuess(prev => [...prev, color]);
-    }
-  }, [currentGuess.length]);
+    setCurrentGuess(prev => {
+      if (prev.length < CODE_LENGTH) {
+        return [...prev, color];
+      }
+      return prev;
+    });
+  }, []);
 
   const removeColorFromGuess = useCallback((index: number) => {
     setCurrentGuess(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const submitGuess = useCallback(() => {
-    if (currentGuess.length !== CODE_LENGTH || !isPlaying || isPaused) return;
+    if (currentGuess.length !== CODE_LENGTH || !isPlaying || isPaused || hasEnded) return;
+    if (secretCode.length === 0) return; // Safety check
 
     const feedback = checkGuess(secretCode, currentGuess);
     const newGuess: Guess = {
@@ -89,42 +87,32 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
       feedback,
     };
 
-    setGuesses(prev => [...prev, newGuess]);
-    setCurrentGuess([]);
+    setGuesses(prev => {
+      const newGuesses = [...prev, newGuess];
+      const newGuessCount = newGuesses.length;
 
-    // Check win/lose
-    if (feedback.correct === CODE_LENGTH) {
-      // Won!
-      const score = MAX_GUESSES - guesses.length; // Higher score = fewer guesses
-      setIsPlaying(false);
-      const rewards = calculateRewards('coral-code', score);
-      onEnd({
-        score,
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
-    } else if (guesses.length >= MAX_GUESSES - 1) {
-      // Out of guesses
-      const score = 0;
-      setIsPlaying(false);
-      const rewards = calculateRewards('coral-code', score);
-      onEnd({
-        score,
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
-    }
-  }, [currentGuess, secretCode, guesses.length, isPlaying, isPaused, onEnd]);
+      // Check win condition
+      if (feedback.correct === CODE_LENGTH) {
+        // Won!
+        const score = MAX_GUESSES - newGuessCount; // Higher score = fewer guesses
+        setIsPlaying(false);
+        setHasEnded(true);
+        const rewards = calculateRewards('coral-code', score);
+        onEnd({
+          score,
+          tier: rewards.tier,
+          xp: rewards.xp,
+          coins: rewards.coins,
+          opals: rewards.opals,
+        });
+        return newGuesses;
+      }
 
-  // End game if lost
-  useEffect(() => {
-    if (!isPlaying && guesses.length > 0 && guesses[guesses.length - 1].feedback.correct !== CODE_LENGTH) {
-      // Already handled in submitGuess, but double-check
-      if (guesses.length >= MAX_GUESSES) {
+      // Check lose condition
+      if (newGuessCount >= MAX_GUESSES) {
+        // Out of guesses
+        setIsPlaying(false);
+        setHasEnded(true);
         const rewards = calculateRewards('coral-code', 0);
         onEnd({
           score: 0,
@@ -133,9 +121,31 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
           coins: rewards.coins,
           opals: rewards.opals,
         });
+        return newGuesses;
       }
-    }
-  }, [isPlaying, guesses, onEnd]);
+
+      return newGuesses;
+    });
+    setCurrentGuess([]);
+  }, [currentGuess.length, secretCode, isPlaying, isPaused, hasEnded, onEnd]);
+
+  // Don't render until secret code is initialized
+  if (secretCode.length === 0) {
+    return (
+      <GameWrapper
+        gameName="Coral Code"
+        score={MAX_GUESSES}
+        onEnd={onEnd}
+        energy={energy}
+        onPause={() => setIsPaused(!isPaused)}
+        isPaused={isPaused}
+      >
+        <div className="relative w-full h-full flex items-center justify-center">
+          <div className="text-white text-lg">Loading...</div>
+        </div>
+      </GameWrapper>
+    );
+  }
 
   return (
     <GameWrapper
