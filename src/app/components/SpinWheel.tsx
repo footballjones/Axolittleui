@@ -18,15 +18,16 @@ interface SpinWheelProps {
   opals: number;
 }
 
+// Reordered to separate opal sections, and opal sections have smaller visual size
 const WHEEL_SECTIONS = [
-  { label: '50 Coins', value: 50, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3 },
-  { label: '100 Coins', value: 100, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3 },
-  { label: '150 Coins', value: 150, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2 },
-  { label: '200 Coins', value: 200, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2 },
-  { label: '250 Coins', value: 250, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1 },
-  { label: '5 Opals', value: 5, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1 },
-  { label: '10 Opals', value: 10, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1 },
-  { label: '300 Coins', value: 300, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1 },
+  { label: '50 Coins', value: 50, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3, visualSize: 1 },
+  { label: '100 Coins', value: 100, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3, visualSize: 1 },
+  { label: '5 Opals', value: 5, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1, visualSize: 0.5 },
+  { label: '150 Coins', value: 150, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2, visualSize: 1 },
+  { label: '200 Coins', value: 200, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2, visualSize: 1 },
+  { label: '10 Opals', value: 10, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1, visualSize: 0.5 },
+  { label: '250 Coins', value: 250, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1, visualSize: 1 },
+  { label: '300 Coins', value: 300, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1, visualSize: 1 },
 ];
 
 // Create weighted array for spinning
@@ -61,12 +62,21 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
     const randomIndex = Math.floor(Math.random() * WEIGHTED_SECTIONS.length);
     const reward = WEIGHTED_SECTIONS[randomIndex];
     
-    // Calculate rotation (multiple full spins + land on selected section)
-    const sectionAngle = 360 / WHEEL_SECTIONS.length;
-    const targetSection = WHEEL_SECTIONS.findIndex(s => 
+    // Calculate visual angles based on visualSize
+    const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
+    const anglePerUnit = 360 / totalVisualSize;
+    
+    // Find target section and calculate its center angle
+    const targetSectionIndex = WHEEL_SECTIONS.findIndex(s => 
       s.value === reward.value && s.type === reward.type
     );
-    const targetAngle = targetSection * sectionAngle;
+    
+    let cumulativeAngle = 0;
+    for (let i = 0; i < targetSectionIndex; i++) {
+      cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
+    }
+    // Center of target section
+    const targetAngle = cumulativeAngle + (WHEEL_SECTIONS[targetSectionIndex].visualSize * anglePerUnit) / 2;
     
     // Spin multiple times (3-5 full rotations) then land on target
     const fullSpins = 3 + Math.random() * 2; // 3-5 spins
@@ -148,31 +158,75 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                       }}
                       style={{ transformOrigin: 'center' }}
                     >
-                      {/* Wheel sections using conic-gradient */}
+                      {/* Wheel sections using conic-gradient with variable sizes */}
                       <div 
                         className="w-full h-full"
                         style={{
-                          background: `conic-gradient(
-                            ${WHEEL_SECTIONS.map((section, i) => {
-                              const start = (360 / WHEEL_SECTIONS.length) * i;
-                              const end = (360 / WHEEL_SECTIONS.length) * (i + 1);
-                              const isOpal = section.type === 'opals';
-                              const color = isOpal ? '#a78bfa' : '#fbbf24';
-                              return `${color} ${start}deg ${end}deg`;
-                            }).join(', ')}
-                          )`,
+                          background: (() => {
+                            const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
+                            const anglePerUnit = 360 / totalVisualSize;
+                            let currentAngle = 0;
+                            
+                            return `conic-gradient(
+                              ${WHEEL_SECTIONS.map((section) => {
+                                const start = currentAngle;
+                                const sectionAngle = section.visualSize * anglePerUnit;
+                                const end = currentAngle + sectionAngle;
+                                currentAngle = end;
+                                const isOpal = section.type === 'opals';
+                                const color = isOpal ? '#a78bfa' : '#fbbf24';
+                                return `${color} ${start}deg ${end}deg`;
+                              }).join(', ')}
+                            )`;
+                          })(),
+                        }}
+                      />
+                      {/* Black divider lines */}
+                      {WHEEL_SECTIONS.map((section, index) => {
+                        const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
+                        const anglePerUnit = 360 / totalVisualSize;
+                        let cumulativeAngle = 0;
+                        for (let i = 0; i < index; i++) {
+                          cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
+                        }
+                        return (
+                          <div
+                            key={`divider-${index}`}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-10"
+                            style={{
+                              width: '2px',
+                              height: '50%',
+                              background: '#000000',
+                              transform: `rotate(${cumulativeAngle}deg)`,
+                            }}
+                          />
+                        );
+                      })}
+                      {/* Final divider line at 360deg (same as 0deg) */}
+                      <div
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-10"
+                        style={{
+                          width: '2px',
+                          height: '50%',
+                          background: '#000000',
+                          transform: 'rotate(360deg)',
                         }}
                       />
                       {/* Section labels */}
                       {WHEEL_SECTIONS.map((section, index) => {
-                        const sectionAngle = 360 / WHEEL_SECTIONS.length;
-                        const rotation = sectionAngle * index + sectionAngle / 2;
+                        const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
+                        const anglePerUnit = 360 / totalVisualSize;
+                        let cumulativeAngle = 0;
+                        for (let i = 0; i < index; i++) {
+                          cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
+                        }
+                        const sectionCenter = cumulativeAngle + (section.visualSize * anglePerUnit) / 2;
                         return (
                           <div
                             key={index}
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                             style={{
-                              transform: `rotate(${rotation}deg) translateY(-80px) rotate(${-rotation}deg)`,
+                              transform: `rotate(${sectionCenter}deg) translateY(-80px) rotate(${-sectionCenter}deg)`,
                             }}
                           >
                             <span className="text-[9px] font-bold text-white drop-shadow-md whitespace-nowrap">
