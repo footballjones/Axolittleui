@@ -16,9 +16,9 @@ const CANVAS_H = 640;
 const GRAVITY = 0.35;
 const JUMP_FORCE = -6.5;
 const HOOK_SPEED = 2.5;
-const HOOK_GAP = 160;
+const HOOK_GAP = 200; // Increased gap for easier passage
 const HOOK_WIDTH = 50;
-const HOOK_INTERVAL = 1800; // ms between hooks
+const HOOK_INTERVAL = 2500; // Increased interval to prevent hooks from being too close
 
 interface Hook {
   x: number;
@@ -59,7 +59,23 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   }, []);
 
   const spawnHook = useCallback(() => {
-    const gapY = 80 + Math.random() * (CANVAS_H - 200);
+    // Ensure minimum distance from previous hook
+    const lastHook = gameStateRef.current.hooks[gameStateRef.current.hooks.length - 1];
+    let gapY = 80 + Math.random() * (CANVAS_H - 200);
+    
+    // If there's a previous hook, ensure minimum spacing
+    if (lastHook) {
+      const minDistance = HOOK_GAP + 100; // Extra spacing
+      if (Math.abs(gapY - lastHook.gapY) < minDistance) {
+        // Adjust gapY to maintain minimum distance
+        if (gapY < lastHook.gapY) {
+          gapY = Math.max(80, lastHook.gapY - minDistance);
+        } else {
+          gapY = Math.min(CANVAS_H - 120, lastHook.gapY + minDistance);
+        }
+      }
+    }
+    
     gameStateRef.current.hooks.push({
       x: CANVAS_W,
       gapY,
@@ -81,34 +97,61 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     ctx.fillStyle = '#1a3a4a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Water ripple lines
+    // Water ripple lines - optimized: fewer lines, cached calculations
     ctx.strokeStyle = 'rgba(100, 200, 255, 0.1)';
-    for (let y = 0; y < CANVAS_H; y += 30) {
+    const time = performance.now() / 1000;
+    for (let y = 0; y < CANVAS_H; y += 40) { // Increased spacing for performance
       ctx.beginPath();
-      ctx.moveTo(0, y + Math.sin(performance.now() / 1000 + y) * 3);
-      ctx.lineTo(CANVAS_W, y + Math.sin(performance.now() / 1000 + y + 2) * 3);
+      const offset1 = Math.sin(time + y * 0.01) * 3;
+      const offset2 = Math.sin(time + y * 0.01 + 2) * 3;
+      ctx.moveTo(0, y + offset1);
+      ctx.lineTo(CANVAS_W, y + offset2);
       ctx.stroke();
     }
 
-    // Hooks
+    // Hooks - redesigned to look like actual fishing hooks
     for (const h of hooks) {
-      // Top hook (line from top)
+      const hookTop = h.gapY - h.gap / 2;
+      const hookBottom = h.gapY + h.gap / 2;
+      
+      // Top hook - line from top
+      ctx.fillStyle = '#666';
+      ctx.fillRect(h.x, 0, h.width, hookTop);
+      
+      // Top hook curve - actual hook shape (curved inward)
       ctx.fillStyle = '#888';
-      ctx.fillRect(h.x, 0, h.width, h.gapY - h.gap / 2);
-      // Hook curve at bottom of top section
-      ctx.fillStyle = '#aaa';
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(h.x + h.width / 2, h.gapY - h.gap / 2, h.width / 2 + 5, 0, Math.PI);
+      // Draw hook shape: line down, curve inward, point back up
+      const hookCurveX = h.x + h.width;
+      const hookCurveY = hookTop;
+      ctx.moveTo(h.x, hookCurveY);
+      ctx.lineTo(hookCurveX, hookCurveY);
+      ctx.quadraticCurveTo(hookCurveX + 15, hookCurveY - 10, hookCurveX + 8, hookCurveY - 20);
+      ctx.lineTo(hookCurveX - 5, hookCurveY - 15);
+      ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
-      // Bottom hook (line from bottom)
+      // Bottom hook - line from bottom
+      ctx.fillStyle = '#666';
+      ctx.fillRect(h.x, hookBottom, h.width, CANVAS_H - hookBottom);
+      
+      // Bottom hook curve - actual hook shape (curved inward)
       ctx.fillStyle = '#888';
-      ctx.fillRect(h.x, h.gapY + h.gap / 2, h.width, CANVAS_H - (h.gapY + h.gap / 2));
-      // Hook curve at top of bottom section
-      ctx.fillStyle = '#aaa';
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(h.x + h.width / 2, h.gapY + h.gap / 2, h.width / 2 + 5, Math.PI, 0);
+      // Draw hook shape: line up, curve inward, point back down
+      const hookCurveY2 = hookBottom;
+      ctx.moveTo(h.x, hookCurveY2);
+      ctx.lineTo(hookCurveX, hookCurveY2);
+      ctx.quadraticCurveTo(hookCurveX + 15, hookCurveY2 + 10, hookCurveX + 8, hookCurveY2 + 20);
+      ctx.lineTo(hookCurveX - 5, hookCurveY2 + 15);
+      ctx.closePath();
       ctx.fill();
+      ctx.stroke();
     }
 
     // Axolotl (simple circle with gills)
@@ -172,7 +215,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
     if (!ctx) return;
 
     const now = performance.now();
@@ -182,14 +225,20 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird.vy += GRAVITY;
     bird.y += bird.vy;
 
-    // Spawn hooks
+    // Spawn hooks - ensure minimum spacing
     if (now - gameStateRef.current.lastHookTime > HOOK_INTERVAL) {
-      spawnHook();
-      gameStateRef.current.lastHookTime = now;
+      // Check if last hook is far enough away before spawning new one
+      const lastHook = hooks[hooks.length - 1];
+      if (!lastHook || lastHook.x < CANVAS_W - 200) { // Only spawn if last hook is far enough
+        spawnHook();
+        gameStateRef.current.lastHookTime = now;
+      }
     }
 
-    // Move hooks
-    for (const h of hooks) {
+    // Move hooks and check collisions in one pass
+    let shouldEnd = false;
+    for (let i = hooks.length - 1; i >= 0; i--) {
+      const h = hooks[i];
       h.x -= HOOK_SPEED;
 
       // Score
@@ -198,17 +247,24 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         setScore(prev => prev + 1);
       }
 
-      // Collision
-      if (
-        bird.x + bird.size > h.x &&
-        bird.x - bird.size < h.x + h.width
-      ) {
-        if (bird.y - bird.size < h.gapY - h.gap / 2 ||
-            bird.y + bird.size > h.gapY + h.gap / 2) {
-          endGame();
-          return;
+      // Collision - only check if hook is near bird for performance
+      if (h.x < bird.x + bird.size + 20 && h.x + h.width > bird.x - bird.size - 20) {
+        if (
+          bird.x + bird.size > h.x &&
+          bird.x - bird.size < h.x + h.width
+        ) {
+          if (bird.y - bird.size < h.gapY - h.gap / 2 ||
+              bird.y + bird.size > h.gapY + h.gap / 2) {
+            shouldEnd = true;
+            break;
+          }
         }
       }
+    }
+
+    if (shouldEnd) {
+      endGame();
+      return;
     }
 
     // Remove off-screen hooks
