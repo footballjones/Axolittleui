@@ -10,25 +10,32 @@ import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
 import { calculateRewards } from './config';
 
-const CODE_LENGTH = 4;
 const MAX_GUESSES = 10;
 const COLORS = ['🔴', '🟡', '🟢', '🔵', '🟣', '🟠'];
 
-function generateSecretCode(): string[] {
+type Difficulty = 'easy' | 'normal' | 'hard';
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { codeLength: number; label: string }> = {
+  easy: { codeLength: 3, label: 'Easy (3 slots)' },
+  normal: { codeLength: 4, label: 'Normal (4 slots)' },
+  hard: { codeLength: 5, label: 'Hard (5 slots)' },
+};
+
+function generateSecretCode(codeLength: number): string[] {
   const code: string[] = [];
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < codeLength; i++) {
     code.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
   }
   return code;
 }
 
-function checkGuess(secret: string[], guess: string[]): { correct: number; wrongPosition: number } {
+function checkGuess(secret: string[], guess: string[], codeLength: number): { correct: number; wrongPosition: number } {
   const secretCounts = new Map<string, number>();
   const guessCounts = new Map<string, number>();
   let correct = 0;
   
   // Count correct positions
-  for (let i = 0; i < CODE_LENGTH; i++) {
+  for (let i = 0; i < codeLength; i++) {
     if (secret[i] === guess[i]) {
       correct++;
     } else {
@@ -54,33 +61,47 @@ interface Guess {
 }
 
 export function CoralCode({ onEnd, energy }: MiniGameProps) {
-  const [secretCode, setSecretCode] = useState<string[]>(() => generateSecretCode());
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [codeLength, setCodeLength] = useState<number>(4);
+  const [secretCode, setSecretCode] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState<string[]>([]);
   const [guesses, setGuesses] = useState<Guess[]>([]);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
   const [hasEnded, setHasEnded] = useState(false);
   const guessIdRef = useRef<number>(0);
 
+  const startGame = useCallback((selectedDifficulty: Difficulty) => {
+    const config = DIFFICULTY_CONFIG[selectedDifficulty];
+    setDifficulty(selectedDifficulty);
+    setCodeLength(config.codeLength);
+    setSecretCode(generateSecretCode(config.codeLength));
+    setCurrentGuess([]);
+    setGuesses([]);
+    setIsPlaying(true);
+    setHasEnded(false);
+    guessIdRef.current = 0;
+  }, []);
+
   const addColorToGuess = useCallback((color: string) => {
     setCurrentGuess(prev => {
-      if (prev.length < CODE_LENGTH) {
+      if (prev.length < codeLength) {
         return [...prev, color];
       }
       return prev;
     });
-  }, []);
+  }, [codeLength]);
 
   const removeColorFromGuess = useCallback((index: number) => {
     setCurrentGuess(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const submitGuess = useCallback(() => {
-    if (currentGuess.length !== CODE_LENGTH || !isPlaying || isPaused || hasEnded) return;
+    if (currentGuess.length !== codeLength || !isPlaying || isPaused || hasEnded) return;
     if (secretCode.length === 0) return; // Safety check
 
-    const feedback = checkGuess(secretCode, currentGuess);
+    const feedback = checkGuess(secretCode, currentGuess, codeLength);
     const newGuess: Guess = {
       id: guessIdRef.current++,
       colors: [...currentGuess],
@@ -92,7 +113,7 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
       const newGuessCount = newGuesses.length;
 
       // Check win condition
-      if (feedback.correct === CODE_LENGTH) {
+      if (feedback.correct === codeLength) {
         // Won!
         const score = MAX_GUESSES - newGuessCount; // Higher score = fewer guesses
         setIsPlaying(false);
@@ -127,10 +148,10 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
       return newGuesses;
     });
     setCurrentGuess([]);
-  }, [currentGuess.length, secretCode, isPlaying, isPaused, hasEnded, onEnd]);
+  }, [currentGuess.length, secretCode, codeLength, isPlaying, isPaused, hasEnded, onEnd]);
 
-  // Don't render until secret code is initialized
-  if (secretCode.length === 0) {
+  // Difficulty selection screen
+  if (!difficulty || secretCode.length === 0) {
     return (
       <GameWrapper
         gameName="Coral Code"
@@ -140,8 +161,30 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
         onPause={() => setIsPaused(!isPaused)}
         isPaused={isPaused}
       >
-        <div className="relative w-full h-full flex items-center justify-center">
-          <div className="text-white text-lg">Loading...</div>
+        <div className="relative w-full h-full flex items-center justify-center p-6 bg-gradient-to-br from-purple-100 via-pink-100 to-violet-100">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 max-w-md w-full border-4 border-purple-300 shadow-2xl"
+          >
+            <div className="text-center mb-6">
+              <h2 className="text-3xl font-bold text-purple-800 mb-2">Crack the Code! 🪸</h2>
+              <p className="text-purple-600 text-sm">Choose your difficulty</p>
+            </div>
+            <div className="space-y-3">
+              {(['easy', 'normal', 'hard'] as Difficulty[]).map((diff) => (
+                <motion.button
+                  key={diff}
+                  onClick={() => startGame(diff)}
+                  className="w-full bg-gradient-to-r from-purple-500 to-violet-600 text-white font-bold py-4 rounded-xl text-lg shadow-lg"
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  {DIFFICULTY_CONFIG[diff].label}
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </GameWrapper>
     );
@@ -156,69 +199,76 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
       onPause={() => setIsPaused(!isPaused)}
       isPaused={isPaused}
     >
-      <div className="relative w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-100 via-pink-100 to-violet-100">
-        {/* Title */}
-        <div className="mb-4">
-          <h3 className="text-2xl font-bold text-purple-800 text-center">
-            Crack the Code! 🪸
+      <div className="relative w-full h-full flex flex-col p-4 bg-gradient-to-br from-purple-100 via-pink-100 to-violet-100">
+        {/* Title - compact */}
+        <div className="mb-2 flex-shrink-0">
+          <h3 className="text-xl font-bold text-purple-800 text-center">
+            {DIFFICULTY_CONFIG[difficulty].label} • {MAX_GUESSES - guesses.length} guesses left
           </h3>
-          <p className="text-sm text-purple-600 text-center mt-1">
-            {MAX_GUESSES - guesses.length} guesses remaining
-          </p>
         </div>
 
-        {/* Previous guesses */}
-        <div className="flex-1 overflow-y-auto w-full max-w-md mb-4 space-y-2">
-          {guesses.map((guess) => (
-            <motion.div
-              key={guess.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white/80 backdrop-blur-sm rounded-xl p-3 border-2 border-purple-300"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                {guess.colors.map((color, i) => (
-                  <div key={i} className="text-3xl">{color}</div>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="bg-green-200 text-green-800 px-2 py-1 rounded">
-                  ✓ {guess.feedback.correct}
-                </span>
-                <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                  ○ {guess.feedback.wrongPosition}
-                </span>
-              </div>
-            </motion.div>
-          ))}
+        {/* Previous guesses - more space */}
+        <div className="flex-1 overflow-y-auto w-full mb-2 space-y-1.5 pr-1">
+          {guesses.map((guess, index) => {
+            const isMostRecent = index === guesses.length - 1;
+            return (
+              <motion.div
+                key={guess.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={`bg-white/80 backdrop-blur-sm rounded-lg p-2 border-2 ${
+                  isMostRecent 
+                    ? 'border-purple-500 bg-purple-50 shadow-md' 
+                    : 'border-purple-300'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  {guess.colors.map((color, i) => (
+                    <div key={i} className="text-2xl">{color}</div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="bg-green-200 text-green-800 px-1.5 py-0.5 rounded">
+                    ✓ {guess.feedback.correct}
+                  </span>
+                  <span className="bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
+                    ○ {guess.feedback.wrongPosition}
+                  </span>
+                  {isMostRecent && (
+                    <span className="ml-auto text-purple-600 font-semibold text-xs">Latest</span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* Current guess */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 mb-4 border-4 border-purple-400 w-full max-w-md">
-          <div className="flex items-center justify-center gap-2 mb-4 min-h-[60px]">
+        {/* Current guess - compact */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 border-4 border-purple-400 flex-shrink-0">
+          <div className="flex items-center justify-center gap-1.5 mb-2 min-h-[50px]">
             {currentGuess.map((color, index) => (
               <motion.button
                 key={index}
                 onClick={() => removeColorFromGuess(index)}
-                className="text-4xl"
+                className="text-3xl"
                 whileTap={{ scale: 0.9 }}
               >
                 {color}
               </motion.button>
             ))}
-            {[...Array(CODE_LENGTH - currentGuess.length)].map((_, i) => (
-              <div key={i} className="w-12 h-12 border-2 border-dashed border-purple-300 rounded-lg" />
+            {[...Array(codeLength - currentGuess.length)].map((_, i) => (
+              <div key={i} className="w-10 h-10 border-2 border-dashed border-purple-300 rounded-lg" />
             ))}
           </div>
 
-          {/* Color picker */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          {/* Color picker - compact */}
+          <div className="grid grid-cols-3 gap-1.5 mb-2">
             {COLORS.map((color) => (
               <motion.button
                 key={color}
                 onClick={() => addColorToGuess(color)}
-                disabled={currentGuess.length >= CODE_LENGTH}
-                className={`text-4xl p-2 rounded-lg border-2 ${
+                disabled={currentGuess.length >= codeLength}
+                className={`text-3xl p-1.5 rounded-lg border-2 ${
                   selectedColor === color
                     ? 'border-purple-600 bg-purple-100'
                     : 'border-purple-200 bg-white'
@@ -231,11 +281,11 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
             ))}
           </div>
 
-          {/* Submit button */}
+          {/* Submit button - compact */}
           <motion.button
             onClick={submitGuess}
-            disabled={currentGuess.length !== CODE_LENGTH || !isPlaying}
-            className="w-full bg-gradient-to-r from-purple-500 to-violet-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={currentGuess.length !== codeLength || !isPlaying}
+            className="w-full bg-gradient-to-r from-purple-500 to-violet-600 text-white font-bold py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             whileTap={{ scale: 0.95 }}
           >
             Submit Guess
