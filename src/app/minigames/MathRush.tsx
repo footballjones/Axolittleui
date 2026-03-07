@@ -119,6 +119,7 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [gameEnded, setGameEnded] = useState(false);
+  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false); // Track if energy was available when game started
   const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [timer, setTimer] = useState(INITIAL_TIMER);
@@ -145,6 +146,8 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   }, [score, getTimerForScore]);
 
   const startGame = useCallback(() => {
+    // Store whether energy was available when game started
+    setHadEnergyAtStart(energy > 0);
     setScore(0);
     setShowOverlay(false);
     setGameEnded(false);
@@ -152,7 +155,7 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
     setIsPlaying(true);
     setIsPaused(false);
     loadNewQuestion();
-  }, [loadNewQuestion]);
+  }, [loadNewQuestion, energy]);
 
   // Timer countdown - only when playing and question is loaded
   useEffect(() => {
@@ -182,16 +185,26 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const endGame = useCallback(() => {
     setIsPlaying(false);
     setGameEnded(true);
-    // Calculate rewards
-    const rewards = calculateRewards('math-rush', score);
-    setFinalRewards({
-      tier: rewards.tier,
-      xp: rewards.xp,
-      coins: rewards.coins,
-      opals: rewards.opals,
-    });
+    // Only calculate and show rewards if energy was available at start
+    if (hadEnergyAtStart) {
+      const rewards = calculateRewards('math-rush', score);
+      setFinalRewards({
+        tier: rewards.tier,
+        xp: rewards.xp,
+        coins: rewards.coins,
+        opals: rewards.opals,
+      });
+    } else {
+      // No rewards if no energy
+      setFinalRewards({
+        tier: 'normal',
+        xp: 0,
+        coins: 0,
+        opals: undefined,
+      });
+    }
     setShowOverlay(true);
-  }, [score]);
+  }, [score, hadEnergyAtStart]);
 
   const handleAnswer = useCallback((answer: number) => {
     if (!currentQuestion || selectedAnswer !== null || waitingForNext) return;
@@ -319,29 +332,39 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                         {score >= 15 ? '🌟 Exceptional performance!' : score >= 8 ? '🎯 Good job!' : '💪 Keep practicing!'}
                       </p>
                       
-                      {/* Rewards display */}
-                      <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
-                        <p className="text-purple-700 font-bold text-lg mb-2">Rewards:</p>
-                        <div className="flex flex-col gap-2 text-purple-800">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-xl">⭐</span>
-                            <span className="font-semibold">+{finalRewards.xp} XP</span>
-                          </div>
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-xl">💰</span>
-                            <span className="font-semibold">+{finalRewards.coins} Coins</span>
-                          </div>
-                          {finalRewards.opals && (
+                      {/* Rewards display - only show if energy was used */}
+                      {hadEnergyAtStart && finalRewards && (finalRewards.xp > 0 || finalRewards.coins > 0) ? (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
+                          <p className="text-purple-700 font-bold text-lg mb-2">Rewards:</p>
+                          <div className="flex flex-col gap-2 text-purple-800">
                             <div className="flex items-center justify-center gap-2">
-                              <span className="text-xl">🪬</span>
-                              <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                              <span className="text-xl">⭐</span>
+                              <span className="font-semibold">+{finalRewards.xp} XP</span>
                             </div>
-                          )}
-                          <p className="text-xs text-purple-600 mt-1">
-                            Tier: {finalRewards.tier.toUpperCase()}
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">💰</span>
+                              <span className="font-semibold">+{finalRewards.coins} Coins</span>
+                            </div>
+                            {finalRewards.opals && (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">🪬</span>
+                                <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                              </div>
+                            )}
+                            <p className="text-xs text-purple-600 mt-1">
+                              Tier: {finalRewards.tier.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
+                          <p className="text-purple-700 font-bold text-lg mb-2">No Energy!</p>
+                          <p className="text-purple-600 text-center text-sm">
+                            Played for fun but no rewards earned.<br />
+                            Energy regenerates over time.
                           </p>
                         </div>
-                      </div>
+                      )}
                     </div>
                     <div className="flex gap-3">
                       <motion.button
@@ -363,14 +386,24 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                       </motion.button>
                       <motion.button
                         onClick={() => {
-                          // Call onEnd with actual rewards when leaving
-                          onEnd({
-                            score,
-                            tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
-                            xp: finalRewards.xp,
-                            coins: finalRewards.coins,
-                            opals: finalRewards.opals,
-                          });
+                          // Call onEnd with actual rewards when leaving (only if energy was used)
+                          if (hadEnergyAtStart && finalRewards) {
+                            onEnd({
+                              score,
+                              tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
+                              xp: finalRewards.xp,
+                              coins: finalRewards.coins,
+                              opals: finalRewards.opals,
+                            });
+                          } else {
+                            // No rewards if no energy
+                            onEnd({
+                              score,
+                              tier: 'normal',
+                              xp: 0,
+                              coins: 0,
+                            });
+                          }
                         }}
                         className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
                         whileTap={{ scale: 0.95 }}
