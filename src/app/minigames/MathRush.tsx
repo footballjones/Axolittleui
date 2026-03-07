@@ -118,6 +118,8 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const [isPlaying, setIsPlaying] = useState(false); // Start with false, show overlay first
   const [isPaused, setIsPaused] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [timer, setTimer] = useState(INITIAL_TIMER);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -126,8 +128,9 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const timerIntervalRef = useRef<number>();
 
   const getTimerForScore = useCallback((currentScore: number) => {
-    // Timer gets faster: 6000ms - score * 200, minimum 2500ms (converted to seconds)
-    const timerMs = Math.max(2500, 6000 - currentScore * 200);
+    // Timer gets faster: 6000ms - score * 100, minimum 3000ms (converted to seconds)
+    // Slower speed-up: decreases by 0.1s per correct answer instead of 0.2s
+    const timerMs = Math.max(3000, 6000 - currentScore * 100);
     return timerMs / 1000; // Convert to seconds
   }, []);
 
@@ -144,6 +147,8 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
   const startGame = useCallback(() => {
     setScore(0);
     setShowOverlay(false);
+    setGameEnded(false);
+    setFinalRewards(null);
     setIsPlaying(true);
     setIsPaused(false);
     loadNewQuestion();
@@ -174,6 +179,20 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
     };
   }, [isPlaying, isPaused, currentQuestion, waitingForNext]);
 
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    setGameEnded(true);
+    // Calculate rewards
+    const rewards = calculateRewards('math-rush', score);
+    setFinalRewards({
+      tier: rewards.tier,
+      xp: rewards.xp,
+      coins: rewards.coins,
+      opals: rewards.opals,
+    });
+    setShowOverlay(true);
+  }, [score]);
+
   const handleAnswer = useCallback((answer: number) => {
     if (!currentQuestion || selectedAnswer !== null || waitingForNext) return;
     
@@ -185,30 +204,28 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
       setFeedback({ text: '✓ Correct!', type: 'correct' });
       setScore(prev => prev + 1);
       setTimeout(() => {
-        loadNewQuestion();
+        if (isPlaying) { // Only load next if still playing
+          loadNewQuestion();
+        }
       }, 500);
     } else {
-      // Wrong answer
+      // Wrong answer - end game
       setFeedback({ text: '✗ Wrong!', type: 'wrong' });
       setTimeout(() => {
-        setIsPlaying(false);
+        endGame();
       }, 800);
     }
-  }, [currentQuestion, selectedAnswer, waitingForNext, loadNewQuestion]);
+  }, [currentQuestion, selectedAnswer, waitingForNext, loadNewQuestion, isPlaying, endGame]);
 
-  // End game
+  // Handle timer running out
   useEffect(() => {
-    if (!isPlaying && score > 0) {
-      const rewards = calculateRewards('math-rush', score);
-      onEnd({
-        score,
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
+    if (timer <= 0 && isPlaying && currentQuestion && !waitingForNext) {
+      setFeedback({ text: '⏰ Time\'s up!', type: 'wrong' });
+      setTimeout(() => {
+        endGame();
+      }, 800);
     }
-  }, [isPlaying, score, onEnd]);
+  }, [timer, isPlaying, currentQuestion, waitingForNext, endGame]);
 
   return (
     <GameWrapper
@@ -238,7 +255,7 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-200/30 rounded-full blur-xl -ml-12 -mb-12" />
               
               <div className="relative z-10">
-                {!isPlaying ? (
+                {!isPlaying && !gameEnded ? (
                   <>
                     <div className="text-center mb-6">
                       <motion.div
@@ -286,7 +303,7 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                       />
                     </motion.button>
                   </>
-                ) : (
+                ) : gameEnded && finalRewards ? (
                   <>
                     <div className="text-center mb-6">
                       <motion.div
@@ -303,13 +320,41 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                       <p className="text-purple-800 text-center mb-2 text-2xl font-bold">
                         {score} correct {score === 1 ? 'answer' : 'answers'}
                       </p>
-                      <p className="text-purple-600 text-center mb-1 text-sm font-medium">
+                      <p className="text-purple-600 text-center mb-4 text-sm font-medium">
                         {score >= 15 ? '🌟 Exceptional performance!' : score >= 8 ? '🎯 Good job!' : '💪 Keep practicing!'}
                       </p>
+                      
+                      {/* Rewards display */}
+                      <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
+                        <p className="text-purple-700 font-bold text-lg mb-2">Rewards:</p>
+                        <div className="flex flex-col gap-2 text-purple-800">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-xl">⭐</span>
+                            <span className="font-semibold">+{finalRewards.xp} XP</span>
+                          </div>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-xl">💰</span>
+                            <span className="font-semibold">+{finalRewards.coins} Coins</span>
+                          </div>
+                          {finalRewards.opals && (
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">🪬</span>
+                              <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-purple-600 mt-1">
+                            Tier: {finalRewards.tier.toUpperCase()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-3">
                       <motion.button
-                        onClick={startGame}
+                        onClick={() => {
+                          setGameEnded(false);
+                          setFinalRewards(null);
+                          startGame();
+                        }}
                         className="flex-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg relative overflow-hidden group"
                         whileTap={{ scale: 0.95 }}
                         whileHover={{ scale: 1.02 }}
@@ -323,9 +368,14 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                       </motion.button>
                       <motion.button
                         onClick={() => {
-                          setIsPlaying(false);
-                          setShowOverlay(false);
-                          onEnd({ score: 0, tier: 'normal', xp: 0, coins: 0 });
+                          // Call onEnd with actual rewards when leaving
+                          onEnd({
+                            score,
+                            tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
+                            xp: finalRewards.xp,
+                            coins: finalRewards.coins,
+                            opals: finalRewards.opals,
+                          });
                         }}
                         className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
                         whileTap={{ scale: 0.95 }}
@@ -335,7 +385,7 @@ export function MathRush({ onEnd, energy }: MiniGameProps) {
                       </motion.button>
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
             </motion.div>
           </motion.div>
