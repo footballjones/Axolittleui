@@ -1,6 +1,6 @@
 /**
  * Treasure Hunt Cave - Explore cave, collect gems, avoid obstacles
- * Seed-based generation for consistent runs
+ * Optimized for mobile with canvas rendering
  * Score = gems collected + distance traveled
  */
 
@@ -10,12 +10,13 @@ import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
 import { calculateRewards } from './config';
 
-const CAVE_WIDTH = 100; // percentage
-const PLAYER_SPEED = 2;
-const OBSTACLE_SPAWN_RATE = 0.02;
-const GEM_SPAWN_RATE = 0.015;
+const CANVAS_W = 360;
+const CANVAS_H = 640;
+const PLAYER_SPEED = 1.2; // Slower speed
+const OBSTACLE_SPAWN_RATE = 0.012; // Slower spawn rate
+const GEM_SPAWN_RATE = 0.01; // Slower spawn rate
 const STAMINA_MAX = 100;
-const STAMINA_DECAY = 0.1; // per frame
+const STAMINA_DECAY = 0.06; // Slower decay
 
 interface Obstacle {
   id: number;
@@ -30,10 +31,9 @@ interface Gem {
   id: number;
   x: number;
   y: number;
-  value: number; // 1, 2, or 3
+  value: number;
 }
 
-// Simple seeded random number generator
 class SeededRandom {
   private seed: number;
   
@@ -48,303 +48,540 @@ class SeededRandom {
 }
 
 export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
-  const [score, setScore] = useState(0); // Gems collected
-  const [distance, setDistance] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
-  const [playerY, setPlayerY] = useState(50); // Percentage from top
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
-  const [gems, setGems] = useState<Gem[]>([]);
-  const [stamina, setStamina] = useState(STAMINA_MAX);
-  const [gemsCollected, setGemsCollected] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false);
+  const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationFrameRef = useRef<number>();
-  const lastFrameTimeRef = useRef<number>(Date.now());
-  const obstacleIdRef = useRef<number>(0);
-  const gemIdRef = useRef<number>(0);
-  const seedRef = useRef<number>(Date.now());
-  const rngRef = useRef<SeededRandom>(new SeededRandom(seedRef.current));
+  const gameRef = useRef<{
+    isPlaying: boolean;
+    isPaused: boolean;
+    playerY: number; // percentage
+    obstacles: Obstacle[];
+    gems: Gem[];
+    stamina: number;
+    distance: number;
+    gemsCollected: number;
+    obstacleId: number;
+    gemId: number;
+    rng: SeededRandom;
+    lastFrameTime: number;
+    onGameEnd: (() => void) | null;
+  }>({
+    isPlaying: false,
+    isPaused: false,
+    playerY: 50,
+    obstacles: [],
+    gems: [],
+    stamina: STAMINA_MAX,
+    distance: 0,
+    gemsCollected: 0,
+    obstacleId: 0,
+    gemId: 0,
+    rng: new SeededRandom(Date.now()),
+    lastFrameTime: 0,
+    onGameEnd: null,
+  });
 
   const handleMove = useCallback((direction: 'up' | 'down') => {
-    if (!isPlaying || isPaused) return;
-    setPlayerY(prev => {
-      const moveAmount = direction === 'up' ? -3 : 3;
-      const newY = prev + moveAmount;
-      return Math.max(10, Math.min(85, newY)); // Clamp to bounds
-    });
-  }, [isPlaying, isPaused]);
+    const game = gameRef.current;
+    if (!game.isPlaying || game.isPaused) return;
+    
+    const moveAmount = direction === 'up' ? -2.5 : 2.5; // Slower movement
+    game.playerY = Math.max(10, Math.min(85, game.playerY + moveAmount));
+  }, []);
+
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => {
+    const game = gameRef.current;
+    
+    // Background
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    
+    // Cave walls gradient
+    const gradient = ctx.createLinearGradient(0, 0, CANVAS_W, 0);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+    gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Draw obstacles
+    for (const obs of game.obstacles) {
+      const x = (obs.x / 100) * CANVAS_W;
+      const y = (obs.y / 100) * CANVAS_H;
+      const w = (obs.width / 100) * CANVAS_W;
+      const h = (obs.height / 100) * CANVAS_H;
+      
+      if (obs.type === 'rock') {
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+      } else {
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#991b1b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+        // Draw creature emoji (simplified)
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('👹', x + w / 2, y + h / 2 + 5);
+      }
+    }
+
+    // Draw gems
+    for (const gem of game.gems) {
+      const x = (gem.x / 100) * CANVAS_W;
+      const y = (gem.y / 100) * CANVAS_H;
+      
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      const emoji = gem.value === 3 ? '💎' : gem.value === 2 ? '💍' : '💠';
+      ctx.fillText(emoji, x, y);
+    }
+
+    // Draw player
+    const playerX = (20 / 100) * CANVAS_W;
+    const playerY = (game.playerY / 100) * CANVAS_H;
+    ctx.font = '40px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🦎', playerX, playerY);
+  }, []);
 
   const gameLoop = useCallback(() => {
-    if (!isPlaying || isPaused) return;
+    const game = gameRef.current;
+    if (!game.isPlaying || game.isPaused || !game.ctx) return;
 
-    const now = Date.now();
-    const deltaTime = (now - lastFrameTimeRef.current) / 16.67;
-    lastFrameTimeRef.current = now;
+    const ctx = game.ctx;
+    const now = performance.now();
+    const deltaTime = game.lastFrameTime > 0 ? (now - game.lastFrameTime) / 16.67 : 1;
+    game.lastFrameTime = now;
 
     // Update distance
-    setDistance(prev => prev + PLAYER_SPEED * deltaTime);
+    game.distance += PLAYER_SPEED * deltaTime;
 
     // Update stamina
-    setStamina(prev => {
-      const newStamina = prev - STAMINA_DECAY * deltaTime;
-      if (newStamina <= 0) {
-        setIsPlaying(false);
-        return 0;
-      }
-      return newStamina;
-    });
+    game.stamina -= STAMINA_DECAY * deltaTime;
+    if (game.stamina <= 0) {
+      game.stamina = 0;
+      if (game.onGameEnd) game.onGameEnd();
+      return;
+    }
 
-    // Move obstacles and gems
-    setObstacles(prev => {
-      const updated = prev.map(obs => ({
-        ...obs,
-        x: obs.x - PLAYER_SPEED * deltaTime,
-      })).filter(obs => obs.x > -obs.width);
+    // Move obstacles
+    const playerX = 20;
+    const playerSize = 8;
+    const playerYPercent = game.playerY;
+    
+    for (let i = game.obstacles.length - 1; i >= 0; i--) {
+      const obs = game.obstacles[i];
+      obs.x -= PLAYER_SPEED * deltaTime;
 
-      // Check collisions
-      const playerX = 20;
-      const playerSize = 8;
-      
-      for (const obs of updated) {
-        if (
-          playerX < obs.x + obs.width &&
-          playerX + playerSize > obs.x &&
-          playerY < obs.y + obs.height &&
-          playerY + playerSize > obs.y
-        ) {
-          setIsPlaying(false);
-          break;
-        }
+      // Remove off-screen
+      if (obs.x + obs.width < 0) {
+        game.obstacles.splice(i, 1);
+        continue;
       }
 
-      return updated;
-    });
+      // Collision check
+      if (
+        playerX < obs.x + obs.width &&
+        playerX + playerSize > obs.x &&
+        playerYPercent < obs.y + obs.height &&
+        playerYPercent + playerSize > obs.y
+      ) {
+        if (game.onGameEnd) game.onGameEnd();
+        return;
+      }
+    }
 
-    setGems(prev => {
-      const updated = prev.map(gem => ({
-        ...gem,
-        x: gem.x - PLAYER_SPEED * deltaTime,
-      })).filter(gem => {
-        // Check collection
-        const playerX = 20;
-        const playerSize = 8;
-        
-        if (
-          playerX < gem.x + 5 &&
-          playerX + playerSize > gem.x - 5 &&
-          playerY < gem.y + 5 &&
-          playerY + playerSize > gem.y - 5
-        ) {
-          setGemsCollected(prev => prev + gem.value);
-          setScore(prev => prev + gem.value);
-          return false; // Remove gem
-        }
-        
-        return gem.x > -10; // Keep if on screen
-      });
+    // Move gems
+    for (let i = game.gems.length - 1; i >= 0; i--) {
+      const gem = game.gems[i];
+      gem.x -= PLAYER_SPEED * deltaTime;
 
-      return updated;
-    });
+      // Collection check
+      if (
+        playerX < gem.x + 5 &&
+        playerX + playerSize > gem.x - 5 &&
+        playerYPercent < gem.y + 5 &&
+        playerYPercent + playerSize > gem.y - 5
+      ) {
+        game.gemsCollected += gem.value;
+        game.score += gem.value;
+        setScore(game.score);
+        game.gems.splice(i, 1);
+        continue;
+      }
+
+      // Remove off-screen
+      if (gem.x < -10) {
+        game.gems.splice(i, 1);
+      }
+    }
 
     // Spawn obstacles
-    if (rngRef.current.next() < OBSTACLE_SPAWN_RATE) {
-      const obstacleY = 20 + rngRef.current.next() * 60;
-      const obstacleHeight = 10 + rngRef.current.next() * 20;
-      const obstacleType = rngRef.current.next() < 0.5 ? 'rock' : 'creature';
+    if (game.rng.next() < OBSTACLE_SPAWN_RATE) {
+      const obstacleY = 20 + game.rng.next() * 60;
+      const obstacleHeight = 10 + game.rng.next() * 20;
+      const obstacleType = game.rng.next() < 0.5 ? 'rock' : 'creature';
       
-      setObstacles(prev => [...prev, {
-        id: obstacleIdRef.current++,
+      game.obstacles.push({
+        id: game.obstacleId++,
         x: 100,
         y: obstacleY,
         width: 8,
         height: obstacleHeight,
         type: obstacleType,
-      }]);
+      });
     }
 
     // Spawn gems
-    if (rngRef.current.next() < GEM_SPAWN_RATE) {
-      const gemY = 15 + rngRef.current.next() * 70;
-      const gemValue = rngRef.current.next() < 0.6 ? 1 : rngRef.current.next() < 0.8 ? 2 : 3;
+    if (game.rng.next() < GEM_SPAWN_RATE) {
+      const gemY = 15 + game.rng.next() * 70;
+      const gemValue = game.rng.next() < 0.6 ? 1 : game.rng.next() < 0.8 ? 2 : 3;
       
-      setGems(prev => [...prev, {
-        id: gemIdRef.current++,
+      game.gems.push({
+        id: game.gemId++,
         x: 100,
         y: gemY,
         value: gemValue,
-      }]);
+      });
     }
 
+    // Draw
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    draw(ctx);
+
+    // Draw HUD
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(10, 10, 140, 60);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 140, 60);
+
+    // Stamina bar
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Stamina', 15, 25);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(15, 30, 130, 8);
+    ctx.fillStyle = game.stamina > 50 ? '#22c55e' : game.stamina > 25 ? '#eab308' : '#ef4444';
+    ctx.fillRect(15, 30, (game.stamina / STAMINA_MAX) * 130, 8);
+
+    // Score
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`💎 ${game.gemsCollected}`, 15, 50);
+    ctx.fillText(`Distance: ${Math.floor(game.distance)}`, 15, 65);
+
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [isPlaying, isPaused, playerY]);
+  }, [draw]);
+
+  const endGame = useCallback(() => {
+    const game = gameRef.current;
+    game.isPlaying = false;
+    setGameEnded(true);
+    
+    const totalScore = game.gemsCollected + Math.floor(game.distance / 10);
+    game.score = totalScore;
+    setScore(totalScore);
+    
+    if (hadEnergyAtStart) {
+      const rewards = calculateRewards('treasure-hunt', totalScore);
+      setFinalRewards({
+        tier: rewards.tier,
+        xp: rewards.xp,
+        coins: rewards.coins,
+        opals: rewards.opals,
+      });
+    } else {
+      setFinalRewards({
+        tier: 'normal',
+        xp: 0,
+        coins: 0,
+        opals: undefined,
+      });
+    }
+    setShowOverlay(true);
+  }, [hadEnergyAtStart]);
+
+  const startGame = useCallback(() => {
+    setHadEnergyAtStart(energy > 0);
+    const game = gameRef.current;
+    game.isPlaying = true;
+    game.isPaused = false;
+    game.playerY = 50;
+    game.obstacles = [];
+    game.gems = [];
+    game.stamina = STAMINA_MAX;
+    game.distance = 0;
+    game.gemsCollected = 0;
+    game.obstacleId = 0;
+    game.gemId = 0;
+    game.rng = new SeededRandom(Date.now());
+    game.lastFrameTime = 0;
+    game.score = 0;
+    setScore(0);
+    setShowOverlay(false);
+    setGameEnded(false);
+    setFinalRewards(null);
+  }, [energy]);
+
+  // Initialize canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas && !ctxRef.current) {
+      ctxRef.current = canvas.getContext('2d', { 
+        alpha: false, 
+        desynchronized: true 
+      });
+    }
+  }, []);
+
+  // Set up game end handler
+  useEffect(() => {
+    gameRef.current.onGameEnd = endGame;
+  }, [endGame]);
+
+  // Touch/click handlers
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTop = (e: Event) => {
+      e.preventDefault();
+      handleMove('up');
+    };
+
+    const handleBottom = (e: Event) => {
+      e.preventDefault();
+      handleMove('down');
+    };
+
+    // Split canvas into top and bottom halves
+    const rect = canvas.getBoundingClientRect();
+    const handleCanvasTap = (e: TouchEvent | MouseEvent) => {
+      e.preventDefault();
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const y = clientY - rect.top;
+      if (y < rect.height / 2) {
+        handleMove('up');
+      } else {
+        handleMove('down');
+      }
+    };
+
+    canvas.addEventListener('touchstart', handleCanvasTap, { passive: false });
+    canvas.addEventListener('click', handleCanvasTap);
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleCanvasTap);
+      canvas.removeEventListener('click', handleCanvasTap);
+    };
+  }, [handleMove]);
 
   // Start game loop
   useEffect(() => {
-    if (isPlaying && !isPaused) {
-      animationFrameRef.current = requestAnimationFrame(gameLoop);
+    const game = gameRef.current;
+    if (game.isPlaying && !game.isPaused && game.ctx) {
+      if (!animationFrameRef.current) {
+        animationFrameRef.current = requestAnimationFrame(gameLoop);
+      }
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+      }
     }
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isPlaying, isPaused, gameLoop]);
-
-  // Handle keyboard/touch controls
-  useEffect(() => {
-    if (!isPlaying || isPaused) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
-        handleMove('up');
-      } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-        handleMove('down');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, isPaused, handleMove]);
-
-  // End game
-  useEffect(() => {
-    if (!isPlaying) {
-      const totalScore = gemsCollected + Math.floor(distance / 10); // Gems + distance bonus
-      const rewards = calculateRewards('treasure-hunt', totalScore);
-      onEnd({
-        score: totalScore,
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
-    }
-  }, [isPlaying, gemsCollected, distance, onEnd]);
+  }, [showOverlay, gameEnded, gameLoop]);
 
   return (
     <GameWrapper
       gameName="Treasure Hunt Cave"
-      score={gemsCollected}
+      score={score}
       onEnd={onEnd}
       energy={energy}
-      onPause={() => setIsPaused(!isPaused)}
-      isPaused={isPaused}
+      onPause={() => {
+        gameRef.current.isPaused = !gameRef.current.isPaused;
+      }}
+      isPaused={gameRef.current.isPaused}
     >
-      <div className="relative w-full h-full overflow-hidden bg-gradient-to-b from-amber-900 via-amber-800 to-amber-900">
-        {/* Cave walls */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-amber-950 to-transparent" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-amber-950 to-transparent" />
-        </div>
-
-        {/* Obstacles */}
-        {obstacles.map(obs => (
+      <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-b from-amber-900 via-amber-800 to-amber-900">
+        {showOverlay && (
           <motion.div
-            key={obs.id}
-            className={`absolute rounded-lg ${
-              obs.type === 'rock' ? 'bg-gray-700' : 'bg-red-600'
-            } border-2 border-gray-900`}
-            style={{
-              left: `${obs.x}%`,
-              top: `${obs.y}%`,
-              width: `${obs.width}%`,
-              height: `${obs.height}%`,
-            }}
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-gradient-to-br from-amber-900/80 via-amber-800/80 to-amber-900/80 backdrop-blur-md z-20 flex items-center justify-center"
           >
-            {obs.type === 'creature' && (
-              <div className="absolute inset-0 flex items-center justify-center text-2xl">
-                👹
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-gradient-to-br from-amber-100 via-amber-50 to-amber-100 rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-amber-300/80 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/30 rounded-full blur-2xl -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-200/30 rounded-full blur-xl -ml-12 -mb-12" />
+              
+              <div className="relative z-10">
+                {!gameRef.current.isPlaying && !gameEnded ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="text-6xl mb-4"
+                      >
+                        💎
+                      </motion.div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-800 mb-4">
+                        Treasure Hunt Cave
+                      </h2>
+                      <div className="space-y-2 text-amber-700 text-sm font-medium">
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">👆</span>
+                          Tap top/bottom to move up/down
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">💎</span>
+                          Collect gems for points
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">⚠️</span>
+                          Avoid rocks and creatures!
+                        </p>
+                        <p className="flex items-center justify-center gap-2">
+                          <span className="text-lg">⚡</span>
+                          Watch your stamina
+                        </p>
+                      </div>
+                    </div>
+                    <motion.button
+                      onClick={startGame}
+                      className="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white font-bold py-4 rounded-xl text-lg shadow-lg relative overflow-hidden group"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>Start Game</span>
+                        <span className="text-xl">🚀</span>
+                      </span>
+                    </motion.button>
+                  </>
+                ) : gameEnded && finalRewards ? (
+                  <>
+                    <div className="text-center mb-6">
+                      <div className="text-6xl mb-4">
+                        {score >= 50 ? '✨' : score >= 25 ? '🎉' : '🎮'}
+                      </div>
+                      <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-800 mb-4">
+                        Game Over!
+                      </h2>
+                      <p className="text-amber-800 text-center mb-2 text-2xl font-bold">
+                        Score: {score}
+                      </p>
+                      <p className="text-amber-600 text-center mb-4 text-sm font-medium">
+                        {score >= 50 ? '🌟 Exceptional treasure hunter!' : score >= 25 ? '🎯 Great exploration!' : '💪 Keep exploring!'}
+                      </p>
+                      
+                      {hadEnergyAtStart && finalRewards && (finalRewards.xp > 0 || finalRewards.coins > 0) ? (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-amber-200">
+                          <p className="text-amber-700 font-bold text-lg mb-2">Rewards:</p>
+                          <div className="flex flex-col gap-2 text-amber-800">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">⭐</span>
+                              <span className="font-semibold">+{finalRewards.xp} XP</span>
+                            </div>
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-xl">💰</span>
+                              <span className="font-semibold">+{finalRewards.coins} Coins</span>
+                            </div>
+                            {finalRewards.opals && (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">🪬</span>
+                                <span className="font-semibold">+{finalRewards.opals} Opals</span>
+                              </div>
+                            )}
+                            <p className="text-xs text-amber-600 mt-1">
+                              Tier: {finalRewards.tier.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-amber-200">
+                          <p className="text-amber-700 font-bold text-lg mb-2">No Energy!</p>
+                          <p className="text-amber-600 text-center text-sm">
+                            Played for fun but no rewards earned.<br />
+                            Energy regenerates over time.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <motion.button
+                        onClick={startGame}
+                        className="flex-1 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white font-bold py-3 rounded-xl shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Play Again
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          if (hadEnergyAtStart && finalRewards) {
+                            onEnd({
+                              score,
+                              tier: finalRewards.tier as 'normal' | 'good' | 'exceptional',
+                              xp: finalRewards.xp,
+                              coins: finalRewards.coins,
+                              opals: finalRewards.opals,
+                            });
+                          } else {
+                            onEnd({
+                              score,
+                              tier: 'normal',
+                              xp: 0,
+                              coins: 0,
+                            });
+                          }
+                        }}
+                        className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white font-bold py-3 rounded-xl shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Back to Games
+                      </motion.button>
+                    </div>
+                  </>
+                ) : null}
               </div>
-            )}
+            </motion.div>
           </motion.div>
-        ))}
+        )}
 
-        {/* Gems */}
-        {gems.map(gem => (
-          <motion.div
-            key={gem.id}
-            className="absolute text-3xl"
-            style={{
-              left: `${gem.x}%`,
-              top: `${gem.y}%`,
-            }}
-            animate={{
-              y: [0, -5, 0],
-              rotate: [0, 360],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          >
-            {gem.value === 3 ? '💎' : gem.value === 2 ? '💍' : '💠'}
-          </motion.div>
-        ))}
-
-        {/* Player */}
-        <motion.div
-          className="absolute text-5xl"
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
           style={{
-            left: '20%',
-            top: `${playerY}%`,
-            transform: 'translateY(-50%)',
+            touchAction: 'none',
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            margin: 0,
+            padding: 0,
           }}
-          animate={{
-            x: [0, 2, 0],
-          }}
-          transition={{
-            duration: 1,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        >
-          🦎
-        </motion.div>
-
-        {/* HUD */}
-        <div className="absolute top-4 left-4 right-4 flex gap-4">
-          {/* Stamina bar */}
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30">
-            <div className="text-white text-xs font-bold mb-1">Stamina</div>
-            <div className="w-32 h-2 bg-black/30 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-green-400 to-yellow-400"
-                initial={{ width: '100%' }}
-                animate={{ width: `${(stamina / STAMINA_MAX) * 100}%` }}
-                transition={{ duration: 0.1 }}
-              />
-            </div>
-          </div>
-
-          {/* Gems counter */}
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30">
-            <div className="text-white text-xs font-bold">💎 {gemsCollected}</div>
-            <div className="text-white text-xs">Distance: {Math.floor(distance)}</div>
-          </div>
-        </div>
-
-        {/* Controls hint */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-          <p className="text-white text-xs font-bold text-center">
-            ↑ ↓ or tap top/bottom to move
-          </p>
-        </div>
-
-        {/* Touch controls */}
-        <div className="absolute inset-0 flex">
-          <div
-            className="flex-1"
-            onTouchStart={() => handleMove('up')}
-            onMouseDown={() => handleMove('up')}
-          />
-          <div
-            className="flex-1"
-            onTouchStart={() => handleMove('down')}
-            onMouseDown={() => handleMove('down')}
-          />
-        </div>
+        />
       </div>
     </GameWrapper>
   );
