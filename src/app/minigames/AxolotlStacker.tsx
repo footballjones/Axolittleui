@@ -292,11 +292,12 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     // Update camera smoothly in game loop (not during drop to reduce lag)
     // NO camera movement until height 11, then use smooth movement
+    // stack.length includes base block: height 1 = length 2, height 10 = length 11, height 11 = length 12
     const stackHeight = stack.length;
     const currentCameraY = cameraY;
     
-    if (stackHeight > 10) {
-      // Start scrolling at height 11 - keep top blocks visible
+    if (stackHeight > 11) {
+      // Start scrolling at height 11 (stack.length = 12) - keep top blocks visible
       const topBlock = stack[stackHeight - 1];
       // Keep top blocks around Y=150
       const desiredTopY = 150;
@@ -312,7 +313,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
         gameStateRef.current.cameraY = targetCameraY;
       }
     } else {
-      // No camera movement until height 11
+      // No camera movement until height 11 (stack.length = 12) - FORCE to 0
       gameStateRef.current.cameraY = 0;
     }
 
