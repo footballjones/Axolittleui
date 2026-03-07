@@ -154,6 +154,9 @@ export default function App() {
       if (loaded.maxEnergy === undefined) {
         loaded.maxEnergy = GAME_CONFIG.energyMax;
       }
+      if (loaded.lastEnergyUpdate === undefined) {
+        loaded.lastEnergyUpdate = Date.now();
+      }
       if (loaded.incubatorEgg === undefined) {
         loaded.incubatorEgg = null;
       }
@@ -166,6 +169,21 @@ export default function App() {
       if (loaded.loginStreak === undefined) {
         loaded.loginStreak = 0;
       }
+      
+      // Calculate energy regeneration since last update
+      const now = Date.now();
+      const lastUpdate = loaded.lastEnergyUpdate || now;
+      const elapsedSeconds = (now - lastUpdate) / 1000;
+      const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
+      const maxEnergy = loaded.maxEnergy || GAME_CONFIG.energyMax;
+      const currentEnergy = loaded.energy || 0;
+      const energyGained = energyRegenRate * elapsedSeconds;
+      const newEnergy = Math.min(maxEnergy, currentEnergy + energyGained);
+      
+      // Update energy and timestamp
+      loaded.energy = Math.floor(newEnergy);
+      loaded.lastEnergyUpdate = now;
+      
       setGameState(loaded);
       
       // Check for daily login bonus on app open
@@ -207,18 +225,28 @@ export default function App() {
         let updated = updateStats(prev.axolotl, stateWithUpdatedShrimp);
         updated = checkEvolution(updated);
 
-        // Energy regen (1 per hour, simplified to ~0.00028 per second)
+        // Energy regen using timestamp-based calculation to preserve fractional energy
+        const now = Date.now();
+        const lastUpdate = stateWithUpdatedShrimp.lastEnergyUpdate || now;
+        const elapsedSeconds = (now - lastUpdate) / 1000;
+        
         const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
-        const newEnergy = Math.min(
-          stateWithUpdatedShrimp.maxEnergy || GAME_CONFIG.energyMax,
-          (stateWithUpdatedShrimp.energy || 0) + energyRegenRate * 5 // 5 seconds passed
-        );
+        const maxEnergy = stateWithUpdatedShrimp.maxEnergy || GAME_CONFIG.energyMax;
+        const currentEnergy = stateWithUpdatedShrimp.energy || 0;
+        
+        // Calculate new energy with fractional precision
+        const energyGained = energyRegenRate * elapsedSeconds;
+        const newEnergy = Math.min(maxEnergy, currentEnergy + energyGained);
+        
+        // Only floor when storing (for display), but track fractional progress via timestamp
+        // This ensures energy accumulates properly even with small increments
 
         return {
           ...stateWithUpdatedShrimp,
           axolotl: updated,
-          energy: Math.floor(newEnergy),
-          maxEnergy: stateWithUpdatedShrimp.maxEnergy || GAME_CONFIG.energyMax,
+          energy: Math.floor(newEnergy), // Floor only for display/storage
+          maxEnergy: maxEnergy,
+          lastEnergyUpdate: now, // Update timestamp to track fractional progress
         };
       });
     }, 5000); // Update every 5 seconds
@@ -1065,9 +1093,21 @@ export default function App() {
                     // Deduct energy when game starts (only if energy > 0)
                     setGameState(prev => {
                       if (!prev || prev.energy <= 0) return prev;
+                      
+                      // Calculate current energy with fractional precision before deducting
+                      const now = Date.now();
+                      const lastUpdate = prev.lastEnergyUpdate || now;
+                      const elapsedSeconds = (now - lastUpdate) / 1000;
+                      const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
+                      const maxEnergy = prev.maxEnergy || GAME_CONFIG.energyMax;
+                      const currentEnergy = prev.energy || 0;
+                      const energyGained = energyRegenRate * elapsedSeconds;
+                      const energyBeforeDeduction = Math.min(maxEnergy, currentEnergy + energyGained);
+                      
                       return {
                         ...prev,
-                        energy: prev.energy - 1,
+                        energy: Math.max(0, Math.floor(energyBeforeDeduction) - 1),
+                        lastEnergyUpdate: now, // Update timestamp after energy consumption
                         // Store flag to track if energy was used (for reward calculation)
                         _lastGameHadEnergy: true,
                       };

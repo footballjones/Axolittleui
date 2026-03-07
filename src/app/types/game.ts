@@ -57,6 +57,7 @@ export interface Egg {
   color: string; // from genetics (may include recessive expression)
   pattern: string; // from genetics (may include recessive expression)
   rarity: 'Common' | 'Rare' | 'Legendary';
+  pendingName?: string; // Name provided during rebirth (used at hatch)
 }
 
 export interface GameState {
@@ -75,6 +76,7 @@ export interface GameState {
   filterTier?: string; // 'filter-basic' | 'filter-advanced' | 'filter-premium'
   shrimpCount?: number; // Number of shrimp in tank (vacation mechanic)
   lastShrimpUpdate?: number; // Timestamp of last shrimp consumption
+  lastEnergyUpdate?: number; // Timestamp of last energy update (for fractional energy tracking)
   lastSpinDate?: string; // YYYY-MM-DD format for daily spin wheel
   lastLoginDate?: string; // YYYY-MM-DD format for daily login bonus
   loginStreak?: number; // Current login streak (days)
@@ -83,6 +85,7 @@ export interface GameState {
 
 export interface Friend {
   id: string;
+  friendCode?: string; // Normalized friend code for duplicate detection
   name: string;
   axolotlName: string;
   stage: LifeStage;

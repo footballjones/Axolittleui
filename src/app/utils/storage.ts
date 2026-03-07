@@ -42,6 +42,11 @@ function migrateV1toV2(state: StoredState): StoredState {
     state.maxEnergy = GAME_CONFIG.energyMax;
   }
   
+  // Add lastEnergyUpdate for fractional energy tracking
+  if (state.lastEnergyUpdate === undefined) {
+    state.lastEnergyUpdate = Date.now();
+  }
+  
   // Add egg system (incubatorEgg, nurseryEggs)
   if (state.incubatorEgg === undefined) {
     state.incubatorEgg = null;
@@ -134,6 +139,7 @@ export function getInitialGameState(): GameState {
     filterTier: undefined,
     shrimpCount: 0,
     lastShrimpUpdate: undefined,
+    lastEnergyUpdate: Date.now(), // Initialize energy timestamp
     lastSpinDate: undefined,
     lastLoginDate: undefined,
     loginStreak: 0,

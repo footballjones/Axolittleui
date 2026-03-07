@@ -475,6 +475,7 @@ export function EggsPanel({
           }
         }}
         eggRarity={eggToHatch?.rarity}
+        pendingName={eggToHatch?.pendingName}
       />
     </motion.div>
   );

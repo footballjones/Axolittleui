@@ -139,7 +139,8 @@ export function RebirthModal({ onClose, onConfirm, currentAxolotl }: RebirthModa
 
           <div className="space-y-4">
             <div>
-              <label className="block text-white/90 text-sm mb-2 font-medium">Name your new axolotl</label>
+              <label className="block text-white/90 text-sm mb-2 font-medium">Choose a name for your new axolotl</label>
+              <p className="text-white/60 text-xs mb-2">(You'll confirm this name when the egg hatches)</p>
               <input
                 type="text"
                 value={newName}

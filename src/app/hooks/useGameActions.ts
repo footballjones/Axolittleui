@@ -44,7 +44,7 @@ export function useGameActions({
 
       // Drop food at a random x position at the TOP
       const newFood: FoodItem = {
-        id: `food-${Date.now()}`,
+        id: `food-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
         x: Math.random() * 80 + 10, // 10-90% from left
         y: 0, // Start at top (will animate down)
         createdAt: Date.now(),
@@ -53,13 +53,15 @@ export function useGameActions({
       const foodItems = [...(prev.foodItems || []), newFood];
 
       // After animation time (5 seconds), update food position to settled
+      // Fix race condition: update by foodId instead of predicate y === 0
+      const foodId = newFood.id;
       setTimeout(() => {
         setGameState(prev => {
           if (!prev) return prev;
           return {
             ...prev,
             foodItems: (prev.foodItems || []).map(f => 
-              f.y === 0 ? { ...f, y: 75 } : f
+              f.id === foodId ? { ...f, y: 75 } : f
             ),
           };
         });
@@ -188,8 +190,12 @@ export function useGameActions({
   }, []);
 
   const handleAddFriend = useCallback((code: string) => {
+    // Normalize friend code for duplicate detection (uppercase, trimmed)
+    const normalizedCode = code.trim().toUpperCase();
+    
     const mockFriend: Friend = {
       id: `friend-${Date.now()}`,
+      friendCode: normalizedCode, // Store normalized code for duplicate detection
       name: code.split('-')[0],
       axolotlName: 'Mystery Axo',
       stage: 'adult',
@@ -200,7 +206,8 @@ export function useGameActions({
     setGameState(prev => {
       if (!prev) return prev;
       
-      if (prev.friends.some(f => f.id === mockFriend.id)) {
+      // Check for duplicates by normalized friend code, not by generated ID
+      if (prev.friends.some(f => f.friendCode === normalizedCode || (f.friendCode === undefined && f.id === mockFriend.id))) {
         setNotifications(prev => [...prev, {
           id: `notif-${Date.now()}`,
           type: 'friend',
@@ -309,7 +316,8 @@ export function useGameActions({
       const oldAxolotl = prev.axolotl;
       const bonusCoins = oldAxolotl.generation * 10;
 
-      const egg = createRebirthEgg(oldAxolotl);
+      // Store the name in the egg metadata for use at hatch
+      const egg = createRebirthEgg(oldAxolotl, newName);
 
       return {
         ...prev,

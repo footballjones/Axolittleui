@@ -5,7 +5,7 @@ import { breedAxolotls, generateAxolotl } from './gameLogic';
 /**
  * Create an egg from rebirth (Elder lays egg)
  */
-export function createRebirthEgg(parent: Axolotl): Egg {
+export function createRebirthEgg(parent: Axolotl, pendingName?: string): Egg {
   // Roll for recessive expression
   let color = parent.color;
   let pattern = parent.pattern;
@@ -34,6 +34,7 @@ export function createRebirthEgg(parent: Axolotl): Egg {
     color,
     pattern,
     rarity,
+    pendingName, // Store name provided during rebirth
   };
 }
 

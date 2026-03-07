@@ -2,7 +2,7 @@
  * Modal for entering a name when hatching an egg
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 
@@ -11,10 +11,20 @@ interface EggHatchModalProps {
   onClose: () => void;
   onConfirm: (name: string) => void;
   eggRarity?: 'Common' | 'Rare' | 'Legendary';
+  pendingName?: string; // Name provided during rebirth (pre-filled)
 }
 
-export function EggHatchModal({ isOpen, onClose, onConfirm, eggRarity = 'Common' }: EggHatchModalProps) {
-  const [name, setName] = useState('');
+export function EggHatchModal({ isOpen, onClose, onConfirm, eggRarity = 'Common', pendingName }: EggHatchModalProps) {
+  const [name, setName] = useState(pendingName || '');
+  
+  // Update name when modal opens with pendingName (from rebirth)
+  useEffect(() => {
+    if (isOpen && pendingName) {
+      setName(pendingName);
+    } else if (isOpen && !pendingName) {
+      setName(''); // Reset if no pending name
+    }
+  }, [isOpen, pendingName]);
 
   const handleConfirm = () => {
     if (name.trim()) {
