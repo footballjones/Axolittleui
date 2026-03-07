@@ -16,9 +16,10 @@ interface GameTileProps {
   expandedId: string | null;
   onToggleInfo: (id: string) => void;
   onSelectGame: (id: string) => void;
+  energy: number;
 }
 
-function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame }: GameTileProps) {
+function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame, energy }: GameTileProps) {
   const isExpanded = expandedId === game.id;
 
   return (
@@ -242,6 +243,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
               expandedId={expandedId}
               onToggleInfo={toggleInfo}
               onSelectGame={onSelectGame}
+              energy={energy}
             />
           ))}
         </div>
@@ -266,6 +268,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
               expandedId={expandedId}
               onToggleInfo={toggleInfo}
               onSelectGame={onSelectGame}
+              energy={energy}
             />
           ))}
         </div>
