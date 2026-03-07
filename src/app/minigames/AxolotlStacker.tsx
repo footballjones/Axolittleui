@@ -291,20 +291,19 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const { current, fallingPieces, stack, cameraY } = gameStateRef.current;
 
     // Update camera smoothly in game loop (not during drop to reduce lag)
-    // Start scrolling gradually from block 10, very smooth transition
+    // NO camera movement until height 11, then use smooth movement
     const stackHeight = stack.length;
     const currentCameraY = cameraY;
     
     if (stackHeight > 10) {
-      // Only start scrolling when we have more than 10 blocks
-      // Calculate target camera position to keep top blocks visible
+      // Start scrolling at height 11 - keep top blocks visible
       const topBlock = stack[stackHeight - 1];
       // Keep top blocks around Y=150
       const desiredTopY = 150;
       const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
       
-      // Smooth transition: move camera gradually (max one block per frame) to prevent jumps
-      const maxMove = BLOCK_HEIGHT * 0.8; // Smooth movement
+      // Smooth transition: move camera gradually (max one block per frame)
+      const maxMove = BLOCK_HEIGHT * 0.8;
       if (targetCameraY > currentCameraY) {
         gameStateRef.current.cameraY = Math.min(targetCameraY, currentCameraY + maxMove);
       } else if (targetCameraY < currentCameraY) {
@@ -312,27 +311,9 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       } else {
         gameStateRef.current.cameraY = targetCameraY;
       }
-    } else if (stackHeight > 8) {
-      // Very gradual start - only scroll a tiny bit per frame
-      // Calculate how much we should scroll based on blocks above 8
-      const blocksAbove8 = stackHeight - 8;
-      // Each block above 8 moves camera by a small amount
-      const targetCameraY = blocksAbove8 * BLOCK_HEIGHT * 0.3; // Very gradual
-      
-      // Smooth transition
-      const maxMove = BLOCK_HEIGHT * 0.3;
-      if (targetCameraY > currentCameraY) {
-        gameStateRef.current.cameraY = Math.min(targetCameraY, currentCameraY + maxMove);
-      } else {
-        gameStateRef.current.cameraY = targetCameraY;
-      }
     } else {
-      // Gradually return to 0 if stack shrinks
-      if (currentCameraY > 0) {
-        gameStateRef.current.cameraY = Math.max(0, currentCameraY - BLOCK_HEIGHT * 0.5);
-      } else {
-        gameStateRef.current.cameraY = 0;
-      }
+      // No camera movement until height 11
+      gameStateRef.current.cameraY = 0;
     }
 
     // Update current block position - use integer math
