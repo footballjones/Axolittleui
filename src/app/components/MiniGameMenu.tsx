@@ -194,7 +194,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
   ];
 
   return (
-    <div className="pt-20 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
+    <div className="pt-4 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
       {/* Solo Games Section */}
       <div>
         <div className="flex items-center gap-2 mb-4">
