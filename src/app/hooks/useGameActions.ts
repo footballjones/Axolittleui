@@ -474,7 +474,7 @@ export function useGameActions({
 
   const handleMiniGameEnd = useCallback((result: GameResult) => {
     setActiveGame(null);
-    // Return to games menu after game ends
+    setCurrentScreen('games'); // Return to games menu after game ends
     
     setGameState(prev => {
       if (!prev || !prev.axolotl) return prev;
