@@ -97,7 +97,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       }
     }
 
-    // Process hooks
+    // Process and draw hooks in single optimized pass
     let shouldEnd = false;
     const bx = bird.x;
     const by = bird.y;
@@ -107,35 +107,45 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bTop = by - bs;
     const bBottom = by + bs;
 
+    // Draw hooks while processing - single pass
+    ctx.fillStyle = '#666';
+    
     for (let i = hooks.length - 1; i >= 0; i--) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
 
-      // Remove off-screen
+      // Remove off-screen hooks early
       if (h.x + h.width < -10) {
         hooks.splice(i, 1);
         continue;
       }
 
-      // Score
-      if (!h.scored && h.x + h.width < bx) {
-        h.scored = true;
-        game.score += 1;
-        // Update score state infrequently (every 5 points or 500ms) to avoid re-renders
-        const timeSinceUpdate = now - game.lastScoreUpdate;
-        if (game.score % 5 === 0 || timeSinceUpdate > 500) {
-          setScore(game.score);
-          game.lastScoreUpdate = now;
-        }
-      }
+      // Only process/draw hooks on screen
+      if (h.x < CANVAS_W && h.x + h.width > 0) {
+        const top = h.gapY - h.gap / 2;
+        const bottom = h.gapY + h.gap / 2;
+        
+        // Draw immediately while we have the calculated values
+        ctx.fillRect(h.x, 0, h.width, top);
+        ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
 
-      // Collision - only check nearby hooks
-      if (!shouldEnd && h.x < bRight + 100 && h.x + h.width > bLeft - 100) {
-        if (bRight > h.x && bLeft < h.x + h.width) {
-          const gapTop = h.gapY - h.gap / 2;
-          const gapBottom = h.gapY + h.gap / 2;
-          if (bTop < gapTop || bBottom > gapBottom) {
-            shouldEnd = true;
+        // Score check - only for hooks that passed bird
+        if (!h.scored && h.x + h.width < bx) {
+          h.scored = true;
+          game.score += 1;
+          const timeSinceUpdate = now - game.lastScoreUpdate;
+          if (game.score % 5 === 0 || timeSinceUpdate > 500) {
+            setScore(game.score);
+            game.lastScoreUpdate = now;
+          }
+        }
+
+        // Collision - only check hooks very close to bird (within 40px for better performance)
+        if (!shouldEnd && h.x < bRight + 40 && h.x + h.width > bLeft - 40) {
+          if (bRight > h.x && bLeft < h.x + h.width) {
+            if (bTop < top || bBottom > bottom) {
+              shouldEnd = true;
+            }
           }
         }
       }
@@ -144,16 +154,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     if (shouldEnd || bBottom > CANVAS_H || bTop < 0) {
       if (game.onGameEnd) game.onGameEnd();
       return;
-    }
-
-    // Draw hooks - simple rectangles only
-    ctx.fillStyle = '#666';
-    for (const h of hooks) {
-      if (h.x > CANVAS_W) break;
-      const top = h.gapY - h.gap / 2;
-      const bottom = h.gapY + h.gap / 2;
-      ctx.fillRect(h.x, 0, h.width, top);
-      ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
     }
 
     // Draw bird - minimal
