@@ -1049,6 +1049,7 @@ export default function App() {
                   height: '100%',
                   width: '100%',
                   position: 'relative',
+                  display: activeGame ? 'none' : 'block', // Hide menu when game is active
                 }}
               >
                 <MiniGameMenu
@@ -1076,8 +1077,9 @@ export default function App() {
                       };
                     });
                     
-                    // Start the game
+                    // Start the game - change screen to hide menu
                     setActiveGame(gameId);
+                    setCurrentScreen('home'); // Hide games menu when game starts
                   }}
                   energy={gameState.energy}
                   maxEnergy={gameState.maxEnergy}
