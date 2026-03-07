@@ -9,11 +9,12 @@ interface SocialModalProps {
   axolotl: Axolotl;
   friends: Friend[];
   onAddFriend: (code: string) => void;
+  onRemoveFriend: (friendId: string) => void;
   onBreed: (friendId: string) => void;
   lineage: Axolotl[];
 }
 
-export function SocialModal({ onClose, axolotl, friends, onAddFriend, onBreed, lineage }: SocialModalProps) {
+export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFriend, onBreed, lineage }: SocialModalProps) {
   const [friendCode, setFriendCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'lineage'>('friends');
@@ -346,7 +347,7 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onBreed, l
                                       </div>
 
                                       {/* Action tiles */}
-                                      <div className="grid grid-cols-3 gap-2">
+                                      <div className="grid grid-cols-2 gap-2 mb-2">
                                         {/* Poke */}
                                         <motion.button
                                           onClick={(e) => {
@@ -400,20 +401,27 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onBreed, l
                                           <span className="text-[1.2rem]">🥚</span>
                                           <span className="text-[9px] font-black tracking-wide uppercase text-pink-500">Hatch Together</span>
                                         </motion.button>
-
-                                        {/* Visit */}
-                                        <motion.button
-                                          className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl"
-                                          style={{
-                                            background: 'linear-gradient(135deg, rgba(186,230,253,0.55), rgba(125,211,252,0.35))',
-                                            border: '1px solid rgba(56,189,248,0.35)',
-                                          }}
-                                          whileTap={{ scale: 0.9 }}
-                                        >
-                                          <span className="text-[1.2rem]">👀</span>
-                                          <span className="text-[9px] font-black tracking-wide uppercase text-sky-500">Visit</span>
-                                        </motion.button>
                                       </div>
+
+                                      {/* Delete friend button - full width */}
+                                      <motion.button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (confirm(`Remove ${friend.name} from your friends list?`)) {
+                                            onRemoveFriend(friend.id);
+                                            setExpandedFriend(null);
+                                          }
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl"
+                                        style={{
+                                          background: 'linear-gradient(135deg, rgba(254,226,226,0.6), rgba(252,165,165,0.4))',
+                                          border: '1px solid rgba(239,68,68,0.4)',
+                                        }}
+                                        whileTap={{ scale: 0.95 }}
+                                      >
+                                        <span className="text-[1rem]">🗑️</span>
+                                        <span className="text-[10px] font-black tracking-wide uppercase text-red-600">Remove Friend</span>
+                                      </motion.button>
                                     </div>
                                   </motion.div>
                                 )}

@@ -119,27 +119,40 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
 
           {/* Modal */}
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
           >
             <div
-              className="w-full max-w-md rounded-3xl overflow-hidden"
+              className="w-full max-w-md rounded-3xl overflow-hidden pointer-events-auto relative"
               style={{
                 background: 'linear-gradient(145deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
                 border: '3px solid rgba(139,92,246,0.5)',
                 boxShadow: '0 25px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="relative px-6 pt-6 pb-4">
                 <button
-                  onClick={onClose}
-                  className="absolute top-4 right-4 rounded-full p-2 border border-violet-400/30 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-sm transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onClose();
+                  }}
+                  className="absolute top-4 right-4 z-[60] rounded-full p-2.5 border-2 border-violet-300/50 bg-white/25 hover:bg-white/35 active:bg-white/45 backdrop-blur-sm transition-all cursor-pointer touch-manipulation"
+                  style={{
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)',
+                  }}
+                  type="button"
+                  aria-label="Close spin wheel"
                 >
-                  <X className="w-4 h-4 text-violet-200" strokeWidth={2.5} />
+                  <X className="w-5 h-5 text-violet-50" strokeWidth={3} />
                 </button>
 
                 <div className="text-center">

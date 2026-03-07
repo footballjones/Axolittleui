@@ -235,6 +235,29 @@ export function useGameActions({
     });
   }, []);
 
+  const handleRemoveFriend = useCallback((friendId: string) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      const friend = prev.friends.find(f => f.id === friendId);
+      if (!friend) return prev;
+
+      setNotifications(prev => [...prev, {
+        id: `notif-${Date.now()}`,
+        type: 'friend',
+        emoji: '👋',
+        message: `Removed ${friend.name} from friends`,
+        time: 'now',
+        read: false,
+      }]);
+      
+      return {
+        ...prev,
+        friends: prev.friends.filter(f => f.id !== friendId),
+      };
+    });
+  }, []);
+
   const handleBreed = useCallback((friendId: string) => {
     setGameState(prev => {
       if (!prev?.axolotl) return prev;
@@ -637,6 +660,7 @@ export function useGameActions({
     handlePurchase,
     handleEquipDecoration,
     handleAddFriend,
+    handleRemoveFriend,
     handleBreed,
     handleRebirth,
     handleHatchEgg,

@@ -194,7 +194,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
   ];
 
   return (
-    <div className="pt-4 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
+    <div className="pt-16 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
       {/* Energy Bar */}
       <motion.div
         className="bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-hidden"
