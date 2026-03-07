@@ -352,8 +352,15 @@ export function EggsPanel({
                   <motion.button
                     onClick={() => {
                       if (selectedEgg.hatchesIn === 'Ready!' && onHatch) {
-                        setEggToHatch(selectedEgg.egg);
-                        setShowHatchModal(true);
+                        // If egg has pendingName (from rebirth), auto-hatch without showing modal
+                        if (selectedEgg.egg.pendingName) {
+                          onHatch(selectedEgg.egg.id, selectedEgg.egg.pendingName);
+                          setSelectedEgg(null);
+                        } else {
+                          // No pending name, show modal to ask for name
+                          setEggToHatch(selectedEgg.egg);
+                          setShowHatchModal(true);
+                        }
                       }
                     }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
