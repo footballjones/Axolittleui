@@ -107,6 +107,7 @@ export default function App() {
     handlePurchase,
     handleEquipDecoration,
     handleAddFriend,
+    handleRemoveFriend,
     handleBreed,
     handleRebirth,
     handleHatchEgg,
@@ -1157,6 +1158,7 @@ export default function App() {
           axolotl={axolotl}
           friends={friends}
           onAddFriend={handleAddFriend}
+          onRemoveFriend={handleRemoveFriend}
           onBreed={handleBreed}
           lineage={lineage}
         />
