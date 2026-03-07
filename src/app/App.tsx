@@ -1190,6 +1190,8 @@ export default function App() {
           <Fishing
             onEnd={handleMiniGameEnd}
             energy={gameState.energy}
+            strength={gameState.axolotl?.secondaryStats?.strength || 0}
+            speed={gameState.axolotl?.secondaryStats?.speed || 0}
           />
         )}
         {activeGame === 'bite-tag' && gameState && (

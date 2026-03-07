@@ -1,8 +1,8 @@
 /**
  * Flappy Fish Hooks - Flappy Bird style
+ * Heavily optimized for mobile performance
  * Tap to swim upward, avoid hooks.
  * Score = number of hooks successfully passed
- * Features: Canvas rendering, water ripple effects, hook curves
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -16,30 +16,32 @@ const CANVAS_H = 640;
 const GRAVITY = 0.35;
 const JUMP_FORCE = -6.5;
 const HOOK_SPEED = 2.5;
-const HOOK_GAP = 200; // Increased gap for easier passage
+const HOOK_GAP = 200;
 const HOOK_WIDTH = 50;
-const HOOK_INTERVAL = 2500; // Increased interval to prevent hooks from being too close
+const HOOK_INTERVAL = 2500;
 
 interface Hook {
   x: number;
-  gapY: number; // Center of gap
-  gap: number; // Gap height
+  gapY: number;
+  gap: number;
   width: number;
   scored: boolean;
 }
 
 export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
-  const [score, setScore] = useState(0); // Hooks passed
-  const [isPlaying, setIsPlaying] = useState(false); // Start with false, show overlay first
+  const [score, setScore] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [gameEnded, setGameEnded] = useState(false);
-  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false); // Track if energy was available when game started
+  const [hadEnergyAtStart, setHadEnergyAtStart] = useState(false);
   const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null); // Cache context
   const animationFrameRef = useRef<number>();
-  const scaleRef = useRef<{ x: number; y: number }>({ x: 1, y: 1 });
+  const scoreRef = useRef(0);
+  const lastScoreUpdateRef = useRef(0);
   const gameStateRef = useRef<{
     bird: { x: number; y: number; vy: number; size: number };
     hooks: Hook[];
@@ -56,19 +58,17 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       hooks: [],
       lastHookTime: 0,
     };
+    scoreRef.current = 0;
     setScore(0);
   }, []);
 
   const spawnHook = useCallback(() => {
-    // Ensure minimum distance from previous hook
     const lastHook = gameStateRef.current.hooks[gameStateRef.current.hooks.length - 1];
     let gapY = 80 + Math.random() * (CANVAS_H - 200);
     
-    // If there's a previous hook, ensure minimum spacing
     if (lastHook) {
-      const minDistance = HOOK_GAP + 100; // Extra spacing
+      const minDistance = HOOK_GAP + 100;
       if (Math.abs(gapY - lastHook.gapY) < minDistance) {
-        // Adjust gapY to maintain minimum distance
         if (gapY < lastHook.gapY) {
           gapY = Math.max(80, lastHook.gapY - minDistance);
         } else {
@@ -91,108 +91,14 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     gameStateRef.current.bird.vy = JUMP_FORCE;
   }, [isPlaying, isPaused]);
 
-  const draw = useCallback((ctx: CanvasRenderingContext2D) => {
-    const { bird, hooks } = gameStateRef.current;
-    
-    // Water background
-    ctx.fillStyle = '#1a3a4a';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Water ripple lines - optimized: fewer lines, cached animation
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.06)';
-    const time = Math.floor(performance.now() / 200); // Update every 200ms for better performance
-    for (let y = 0; y < CANVAS_H; y += 80) { // Even more spacing for performance
-      ctx.beginPath();
-      const offset1 = Math.sin(time * 0.008 + y * 0.006) * 2;
-      const offset2 = Math.sin(time * 0.008 + y * 0.006 + 2) * 2;
-      ctx.moveTo(0, y + offset1);
-      ctx.lineTo(CANVAS_W, y + offset2);
-      ctx.stroke();
-    }
-
-    // Hooks - redesigned to look like actual fishing hooks
-    for (const h of hooks) {
-      const hookTop = h.gapY - h.gap / 2;
-      const hookBottom = h.gapY + h.gap / 2;
-      
-      // Top hook - line from top
-      ctx.fillStyle = '#666';
-      ctx.fillRect(h.x, 0, h.width, hookTop);
-      
-      // Top hook curve - actual hook shape (curved inward)
-      ctx.fillStyle = '#888';
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      // Draw hook shape: line down, curve inward, point back up
-      const hookCurveX = h.x + h.width;
-      const hookCurveY = hookTop;
-      ctx.moveTo(h.x, hookCurveY);
-      ctx.lineTo(hookCurveX, hookCurveY);
-      ctx.quadraticCurveTo(hookCurveX + 15, hookCurveY - 10, hookCurveX + 8, hookCurveY - 20);
-      ctx.lineTo(hookCurveX - 5, hookCurveY - 15);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Bottom hook - line from bottom
-      ctx.fillStyle = '#666';
-      ctx.fillRect(h.x, hookBottom, h.width, CANVAS_H - hookBottom);
-      
-      // Bottom hook curve - actual hook shape (curved inward)
-      ctx.fillStyle = '#888';
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      // Draw hook shape: line up, curve inward, point back down
-      const hookCurveY2 = hookBottom;
-      ctx.moveTo(h.x, hookCurveY2);
-      ctx.lineTo(hookCurveX, hookCurveY2);
-      ctx.quadraticCurveTo(hookCurveX + 15, hookCurveY2 + 10, hookCurveX + 8, hookCurveY2 + 20);
-      ctx.lineTo(hookCurveX - 5, hookCurveY2 + 15);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    // Axolotl (simple circle with gills)
-    const bx = bird.x, by = bird.y, bs = bird.size;
-    ctx.fillStyle = '#E8A0BF';
-    ctx.beginPath();
-    ctx.arc(bx, by, bs, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eyes
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(bx + 6, by - 5, 3, 0, Math.PI * 2);
-    ctx.arc(bx + 6, by + 5, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Gills
-    ctx.strokeStyle = '#D48BA8';
-    ctx.lineWidth = 2;
-    for (const dy of [-12, -8, 8, 12]) {
-      ctx.beginPath();
-      ctx.moveTo(bx - bs + 2, by + dy);
-      ctx.lineTo(bx - bs - 10, by + dy + (dy > 0 ? 4 : -4));
-      ctx.stroke();
-    }
-
-    // Smile
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(bx + 10, by, 5, -0.3, Math.PI * 0.3);
-    ctx.stroke();
-  }, []);
-
   const endGame = useCallback(() => {
     setIsPlaying(false);
     setGameEnded(true);
-    // Only calculate and show rewards if energy was available at start
+    const finalScore = scoreRef.current;
+    setScore(finalScore);
+    
     if (hadEnergyAtStart) {
-      const rewards = calculateRewards('fish-hooks', score);
+      const rewards = calculateRewards('fish-hooks', finalScore);
       setFinalRewards({
         tier: rewards.tier,
         xp: rewards.xp,
@@ -200,7 +106,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         opals: rewards.opals,
       });
     } else {
-      // No rewards if no energy
       setFinalRewards({
         tier: 'normal',
         xp: 0,
@@ -209,58 +114,85 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       });
     }
     setShowOverlay(true);
-  }, [score, hadEnergyAtStart]);
+  }, [hadEnergyAtStart]);
 
+  // Ultra-optimized game loop - everything inlined
   const gameLoop = useCallback(() => {
     if (!isPlaying || isPaused) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
+    const ctx = ctxRef.current;
     if (!ctx) return;
     
-    // Clear canvas - draw at internal resolution (browser handles display scaling)
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    // Clear
+    ctx.fillStyle = '#1a3a4a';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     const now = performance.now();
-    const { bird, hooks } = gameStateRef.current;
+    const state = gameStateRef.current;
+    const bird = state.bird;
+    const hooks = state.hooks;
 
     // Bird physics
     bird.vy += GRAVITY;
     bird.y += bird.vy;
 
-    // Spawn hooks - ensure minimum spacing
-    if (now - gameStateRef.current.lastHookTime > HOOK_INTERVAL) {
-      // Check if last hook is far enough away before spawning new one
+    // Spawn hooks
+    if (now - state.lastHookTime > HOOK_INTERVAL) {
       const lastHook = hooks[hooks.length - 1];
-      if (!lastHook || lastHook.x < CANVAS_W - 200) { // Only spawn if last hook is far enough
+      if (!lastHook || lastHook.x < CANVAS_W - 200) {
         spawnHook();
-        gameStateRef.current.lastHookTime = now;
+        state.lastHookTime = now;
       }
     }
 
-    // Move hooks and check collisions in one pass
+    // Move hooks, check collisions, and draw in one pass
     let shouldEnd = false;
+    let firstVisibleHook = -1;
+    const birdX = bird.x;
+    const birdY = bird.y;
+    const birdSize = bird.size;
+    const birdLeft = birdX - birdSize;
+    const birdRight = birdX + birdSize;
+    const birdTop = birdY - birdSize;
+    const birdBottom = birdY + birdSize;
+
+    // Find first visible hook for drawing optimization
+    for (let i = 0; i < hooks.length; i++) {
+      if (hooks[i].x + hooks[i].width > 0) {
+        firstVisibleHook = i;
+        break;
+      }
+    }
+
+    // Process hooks from back to front
     for (let i = hooks.length - 1; i >= 0; i--) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
 
-      // Score
-      if (!h.scored && h.x + h.width < bird.x) {
-        h.scored = true;
-        setScore(prev => prev + 1);
+      // Remove off-screen hooks early
+      if (h.x + h.width < -10) {
+        hooks.splice(i, 1);
+        continue;
       }
 
-      // Collision - only check if hook is near bird for performance
-      if (h.x < bird.x + bird.size + 20 && h.x + h.width > bird.x - bird.size - 20) {
-        if (
-          bird.x + bird.size > h.x &&
-          bird.x - bird.size < h.x + h.width
-        ) {
-          if (bird.y - bird.size < h.gapY - h.gap / 2 ||
-              bird.y + bird.size > h.gapY + h.gap / 2) {
+      // Score check
+      if (!h.scored && h.x + h.width < birdX) {
+        h.scored = true;
+        scoreRef.current += 1;
+        const timeSinceLastUpdate = now - lastScoreUpdateRef.current;
+        if (scoreRef.current % 5 === 0 || timeSinceLastUpdate > 500) {
+          setScore(scoreRef.current);
+          lastScoreUpdateRef.current = now;
+        }
+      }
+
+      // Collision - only check if hook is near bird (within 100px horizontally)
+      if (!shouldEnd && h.x < birdRight + 100 && h.x + h.width > birdLeft - 100) {
+        if (birdRight > h.x && birdLeft < h.x + h.width) {
+          const gapTop = h.gapY - h.gap / 2;
+          const gapBottom = h.gapY + h.gap / 2;
+          if (birdTop < gapTop || birdBottom > gapBottom) {
             shouldEnd = true;
-            break;
           }
         }
       }
@@ -271,23 +203,66 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Remove off-screen hooks
-    gameStateRef.current.hooks = hooks.filter(h => h.x + h.width > -10);
+    // Draw hooks - only visible ones, ultra-simple rectangles
+    ctx.fillStyle = '#666';
+    for (let i = firstVisibleHook >= 0 ? firstVisibleHook : 0; i < hooks.length; i++) {
+      const h = hooks[i];
+      if (h.x > CANVAS_W) break; // Stop if past screen
+      
+      const hookTop = h.gapY - h.gap / 2;
+      const hookBottom = h.gapY + h.gap / 2;
+      
+      // Top hook - single rectangle
+      ctx.fillRect(h.x, 0, h.width, hookTop);
+      // Bottom hook - single rectangle
+      ctx.fillRect(h.x, hookBottom, h.width, CANVAS_H - hookBottom);
+    }
+
+    // Draw bird - minimal operations
+    const bx = birdX;
+    const by = birdY;
+    const bs = birdSize;
+    
+    // Body
+    ctx.fillStyle = '#E8A0BF';
+    ctx.beginPath();
+    ctx.arc(bx, by, bs, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes - single path
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(bx + 6, by - 5, 3, 0, Math.PI * 2);
+    ctx.arc(bx + 6, by + 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gills - single path
+    ctx.strokeStyle = '#D48BA8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx - bs + 2, by - 12);
+    ctx.lineTo(bx - bs - 8, by - 10);
+    ctx.moveTo(bx - bs + 2, by + 12);
+    ctx.lineTo(bx - bs - 8, by + 10);
+    ctx.stroke();
+
+    // Smile
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx + 10, by, 5, -0.3, Math.PI * 0.3);
+    ctx.stroke();
 
     // Boundary collision
-    if (bird.y + bird.size > CANVAS_H || bird.y - bird.size < 0) {
+    if (birdBottom > CANVAS_H || birdTop < 0) {
       endGame();
       return;
     }
 
-    // Draw everything at internal resolution
-    draw(ctx);
-
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [isPlaying, isPaused, spawnHook, endGame, draw]);
+  }, [isPlaying, isPaused, spawnHook, endGame]);
 
   const startGame = useCallback(() => {
-    // Store whether energy was available when game started
     setHadEnergyAtStart(energy > 0);
     reset();
     setShowOverlay(false);
@@ -296,51 +271,40 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setIsPlaying(true);
     setIsPaused(false);
     gameStateRef.current.lastHookTime = performance.now();
-    
-    // Initialize canvas scaling - let CSS handle the sizing, we just calculate scale
-    const canvas = canvasRef.current;
-    if (canvas) {
-      // Force a layout recalculation
-      void canvas.offsetWidth;
-      
-      // Calculate initial scale
-      const rect = canvas.getBoundingClientRect();
-      scaleRef.current = {
-        x: rect.width / CANVAS_W,
-        y: rect.height / CANVAS_H,
-      };
-    }
+    lastScoreUpdateRef.current = performance.now();
   }, [reset, energy]);
 
-  // Update canvas scale for input coordinate mapping
+  // Initialize canvas context once
   useEffect(() => {
-    const updateScale = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      // Get actual displayed size vs internal resolution
-      const rect = canvas.getBoundingClientRect();
-      scaleRef.current = {
-        x: CANVAS_W / rect.width,  // Internal pixels per display pixel
-        y: CANVAS_H / rect.height,
-      };
+    const canvas = canvasRef.current;
+    if (canvas && !ctxRef.current) {
+      ctxRef.current = canvas.getContext('2d', { 
+        alpha: false, 
+        desynchronized: true,
+        willReadFrequently: false 
+      });
+    }
+  }, []);
+
+  // Touch/click handler
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleInteraction = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      jump();
     };
 
-    // Update scale when canvas size changes
-    const resizeObserver = new ResizeObserver(updateScale);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      resizeObserver.observe(canvas);
-      updateScale();
-    }
-
-    window.addEventListener('resize', updateScale);
+    canvas.addEventListener('touchstart', handleInteraction, { passive: false });
+    canvas.addEventListener('click', handleInteraction);
 
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateScale);
+      canvas.removeEventListener('touchstart', handleInteraction);
+      canvas.removeEventListener('click', handleInteraction);
     };
-  }, []);
+  }, [jump]);
 
   // Start game loop
   useEffect(() => {
@@ -377,7 +341,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               className="bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100 rounded-3xl p-8 max-w-md w-full mx-4 border-4 border-purple-300/80 shadow-2xl relative overflow-hidden"
             >
-              {/* Decorative background elements */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16" />
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-200/30 rounded-full blur-xl -ml-12 -mb-12" />
               
@@ -446,7 +409,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
                         {score >= 20 ? '🌟 Exceptional performance!' : score >= 10 ? '🎯 Good job!' : '💪 Keep practicing!'}
                       </p>
                       
-                      {/* Rewards display - only show if energy was used */}
                       {hadEnergyAtStart && finalRewards && (finalRewards.xp > 0 || finalRewards.coins > 0) ? (
                         <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-purple-200">
                           <p className="text-purple-700 font-bold text-lg mb-2">Rewards:</p>
@@ -500,7 +462,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
                       </motion.button>
                       <motion.button
                         onClick={() => {
-                          // Call onEnd with actual rewards when leaving (only if energy was used)
                           if (hadEnergyAtStart && finalRewards) {
                             onEnd({
                               score,
@@ -510,7 +471,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
                               opals: finalRewards.opals,
                             });
                           } else {
-                            // No rewards if no energy
                             onEnd({
                               score,
                               tier: 'normal',
@@ -533,7 +493,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
           </motion.div>
         )}
 
-        {/* Canvas - CSS fills container, attributes set internal resolution */}
+        {/* Canvas */}
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
@@ -546,14 +506,9 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
             margin: 0,
             padding: 0,
           }}
-          onClick={jump}
-          onTouchStart={(e) => {
-            e.preventDefault();
-            jump();
-          }}
         />
 
-        {/* Tap instruction overlay (first 2 seconds) */}
+        {/* Tap instruction overlay */}
         {isPlaying && score === 0 && gameStateRef.current.hooks.length === 0 && (
           <motion.div
             className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
