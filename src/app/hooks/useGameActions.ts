@@ -479,21 +479,9 @@ export function useGameActions({
     setGameState(prev => {
       if (!prev || !prev.axolotl) return prev;
       
-      // Only award rewards if energy was available when game started
-      // Energy is deducted when game starts (only if energy > 0)
-      // So if energy is at maxEnergy, it means no energy was used (was already at max or was 0)
-      // If energy < maxEnergy, it means energy was used, so give rewards
-      // BUT: if energy is 0 and maxEnergy > 0, it means energy was 0 at start, so no rewards
-      // So: hadEnergy = energy < maxEnergy AND energy > 0 (or was > 0 before deduction)
-      // Since we deduct 1 if energy > 0, if current energy is 0 and maxEnergy > 0,
-      // it means either: energy was 0 at start (no rewards) OR energy was 1 at start (should reward)
-      // To distinguish: if energy is 0 and we're checking after a game, it likely means it was 0 at start
-      // Better approach: if energy is at maxEnergy, definitely no energy was used
-      // If energy < maxEnergy, energy was used (unless it was already < maxEnergy before, but that's fine)
-      // Actually, simplest: if energy is 0, no rewards. If energy > 0 and < maxEnergy, rewards.
-      // If energy == maxEnergy, check if it was just regenerated... but we can't know.
-      // Best: if energy == maxEnergy, assume no energy was used (player just regenerated or was at max)
-      const hadEnergy = prev.energy > 0 && prev.energy < prev.maxEnergy;
+      // Check if energy was available when game started (stored in _lastGameHadEnergy)
+      // This flag is set when game starts, before energy is deducted
+      const hadEnergy = (prev as any)._lastGameHadEnergy === true;
       
       const newXP = hadEnergy ? prev.axolotl.experience + result.xp : prev.axolotl.experience;
       const newCoins = hadEnergy ? prev.coins + result.coins : prev.coins;
@@ -526,8 +514,11 @@ export function useGameActions({
         }]);
       }
       
+      // Clean up the temporary flag
+      const { _lastGameHadEnergy, ...restState } = prev as any;
+      
       return {
-        ...prev,
+        ...restState,
         axolotl: evolvedAxolotl,
         coins: newCoins,
         opals: newOpals,

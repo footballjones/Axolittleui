@@ -1063,14 +1063,24 @@ export default function App() {
                   onSelectGame={(gameId) => {
                     if (!gameState) return;
                     
+                    // Store whether energy was available when game started
+                    const hadEnergyAtStart = gameState.energy > 0;
+                    
                     // Deduct energy when game starts (only if energy > 0)
                     setGameState(prev => {
                       if (!prev || prev.energy <= 0) return prev;
                       return {
                         ...prev,
                         energy: prev.energy - 1,
+                        // Store flag to track if energy was used (for reward calculation)
+                        _lastGameHadEnergy: true,
                       };
                     });
+                    
+                    // If no energy, still set flag to false
+                    if (!hadEnergyAtStart) {
+                      setGameState(prev => prev ? { ...prev, _lastGameHadEnergy: false } : prev);
+                    }
                     
                     // Start the game - change screen to hide menu
                     setActiveGame(gameId);
