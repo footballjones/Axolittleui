@@ -39,6 +39,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const scaleRef = useRef<{ x: number; y: number }>({ x: 1, y: 1 });
   const gameStateRef = useRef<{
     bird: { x: number; y: number; vy: number; size: number };
     hooks: Hook[];
@@ -97,13 +98,13 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     ctx.fillStyle = '#1a3a4a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Water ripple lines - optimized: fewer lines, cached calculations
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.1)';
-    const time = performance.now() / 1000;
-    for (let y = 0; y < CANVAS_H; y += 40) { // Increased spacing for performance
+    // Water ripple lines - optimized: fewer lines, cached animation
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.06)';
+    const time = Math.floor(performance.now() / 200); // Update every 200ms for better performance
+    for (let y = 0; y < CANVAS_H; y += 80) { // Even more spacing for performance
       ctx.beginPath();
-      const offset1 = Math.sin(time + y * 0.01) * 3;
-      const offset2 = Math.sin(time + y * 0.01 + 2) * 3;
+      const offset1 = Math.sin(time * 0.008 + y * 0.006) * 2;
+      const offset2 = Math.sin(time * 0.008 + y * 0.006 + 2) * 2;
       ctx.moveTo(0, y + offset1);
       ctx.lineTo(CANVAS_W, y + offset2);
       ctx.stroke();
@@ -218,12 +219,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
     if (!ctx) return;
     
-    // Scale context to match display size
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width / CANVAS_W;
-    const scaleY = rect.height / CANVAS_H;
-    ctx.save();
-    ctx.scale(scaleX, scaleY);
+    // Clear canvas - draw at internal resolution (browser handles display scaling)
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
     const now = performance.now();
     const { bird, hooks } = gameStateRef.current;
@@ -283,9 +280,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Draw everything
+    // Draw everything at internal resolution
     draw(ctx);
-    ctx.restore();
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [isPlaying, isPaused, spawnHook, endGame, draw]);
@@ -301,28 +297,50 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setIsPaused(false);
     gameStateRef.current.lastHookTime = performance.now();
     
-    // Resize canvas to fill container
+    // Initialize canvas scaling - let CSS handle the sizing, we just calculate scale
     const canvas = canvasRef.current;
     if (canvas) {
-      const container = canvas.parentElement;
-      if (container) {
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        // Scale canvas to fill container while maintaining aspect ratio
-        const scale = Math.min(containerWidth / CANVAS_W, containerHeight / CANVAS_H);
-        canvas.style.width = `${CANVAS_W * scale}px`;
-        canvas.style.height = `${CANVAS_H * scale}px`;
-      }
+      // Force a layout recalculation
+      void canvas.offsetWidth;
       
-      const ctx = canvas.getContext('2d', { alpha: false });
-      if (ctx) {
-        // Scale context to match display size
-        const rect = canvas.getBoundingClientRect();
-        ctx.scale(rect.width / CANVAS_W, rect.height / CANVAS_H);
-        draw(ctx);
-      }
+      // Calculate initial scale
+      const rect = canvas.getBoundingClientRect();
+      scaleRef.current = {
+        x: rect.width / CANVAS_W,
+        y: rect.height / CANVAS_H,
+      };
     }
-  }, [reset, draw, energy]);
+  }, [reset, energy]);
+
+  // Update canvas scale for input coordinate mapping
+  useEffect(() => {
+    const updateScale = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // Get actual displayed size vs internal resolution
+      const rect = canvas.getBoundingClientRect();
+      scaleRef.current = {
+        x: CANVAS_W / rect.width,  // Internal pixels per display pixel
+        y: CANVAS_H / rect.height,
+      };
+    };
+
+    // Update scale when canvas size changes
+    const resizeObserver = new ResizeObserver(updateScale);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      resizeObserver.observe(canvas);
+      updateScale();
+    }
+
+    window.addEventListener('resize', updateScale);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, []);
 
   // Start game loop
   useEffect(() => {
@@ -345,7 +363,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       onPause={() => setIsPaused(!isPaused)}
       isPaused={isPaused}
     >
-      <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100">
+      <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100" style={{ margin: 0, padding: 0 }}>
         {/* Start/End Overlay */}
         {showOverlay && (
           <motion.div
@@ -515,18 +533,18 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
           </motion.div>
         )}
 
-        {/* Canvas */}
+        {/* Canvas - CSS fills container, attributes set internal resolution */}
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="w-full h-full"
           style={{ 
             touchAction: 'none',
             display: 'block',
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            margin: 0,
+            padding: 0,
           }}
           onClick={jump}
           onTouchStart={(e) => {
