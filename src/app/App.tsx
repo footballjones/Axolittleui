@@ -325,31 +325,10 @@ export default function App() {
 
   // All other handlers are now in useGameActions hook
 
-  // Show welcome screen only if no axolotl AND no eggs (completely new game)
-  // If there are eggs incubating, show aquarium instead
-  const hasEggs = gameState?.incubatorEgg || (gameState?.nurseryEggs && gameState.nurseryEggs.length > 0);
-  if (!gameState || (!gameState.axolotl && !hasEggs)) {
+  // Show welcome screen if no axolotl
+  if (!gameState || !gameState.axolotl) {
     return <WelcomeScreen onStart={handleStart} />;
   }
-  
-  // Auto-hatch ready eggs with pendingName (from rebirth)
-  useEffect(() => {
-    if (!gameState || gameState.axolotl) return; // Only if no axolotl
-    
-    // Check incubator egg
-    if (gameState.incubatorEgg && isEggReady(gameState.incubatorEgg) && gameState.incubatorEgg.pendingName) {
-      handleHatchEgg(gameState.incubatorEgg.id, gameState.incubatorEgg.pendingName);
-      return;
-    }
-    
-    // Check nursery eggs (hatch first ready one with pendingName)
-    if (gameState.nurseryEggs && gameState.nurseryEggs.length > 0) {
-      const readyEgg = gameState.nurseryEggs.find(e => isEggReady(e) && e.pendingName);
-      if (readyEgg && !gameState.incubatorEgg) {
-        handleHatchEgg(readyEgg.id, readyEgg.pendingName);
-      }
-    }
-  }, [gameState?.incubatorEgg?.id, gameState?.nurseryEggs, gameState?.axolotl, handleHatchEgg]);
 
   const { axolotl, coins, unlockedDecorations, customization, friends, lineage } = gameState;
   const opals = gameState.opals || 0; // Default to 0 if not set
@@ -357,10 +336,10 @@ export default function App() {
   const unreadCount = notifications.filter(n => !n.read).length;
   const hasNotifications = unreadCount > 0 || hasPendingPokes;
 
-  // Calculate XP and level (only if axolotl exists)
-  const currentLevel = axolotl ? calculateLevel(axolotl.experience) : 1;
-  const nextLevelXP = axolotl ? getXPForNextLevel(currentLevel) : 10;
-  const currentLevelXP = axolotl ? getCurrentLevelXP(axolotl.experience) : 0;
+  // Calculate XP and level
+  const currentLevel = calculateLevel(axolotl.experience);
+  const nextLevelXP = getXPForNextLevel(currentLevel);
+  const currentLevelXP = getCurrentLevelXP(axolotl.experience);
 
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center p-0 sm:p-4">
@@ -407,9 +386,7 @@ export default function App() {
                   </motion.button>
 
                   {/* Axolotl Name */}
-                  <h1 className="text-base font-bold text-white tracking-tight truncate flex-1 min-w-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
-                    {axolotl ? axolotl.name : 'Egg Incubating'}
-                  </h1>
+                  <h1 className="text-base font-bold text-white tracking-tight truncate flex-1 min-w-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">{axolotl.name}</h1>
 
                   {/* Compact currency counters */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -485,9 +462,7 @@ export default function App() {
                       <div className="flex items-center gap-2 pb-0.5 mt-0.5">
                         <span className="text-white/50 text-[9px] font-medium">{currentLevelXP}/{nextLevelXP} XP</span>
                         <span className="text-white/30 text-[9px]">·</span>
-                        {axolotl && (
-                          <span className="text-white/50 text-[9px] font-medium capitalize">Stage: {axolotl.stage}</span>
-                        )}
+                        <span className="text-white/50 text-[9px] font-medium capitalize">Stage: {axolotl.stage}</span>
                       </div>
                     </motion.div>
                   )}
@@ -1011,24 +986,14 @@ export default function App() {
                         <FoodDisplay key={food.id} food={food} />
                       ))}
                       
-                      {/* Axolotl or Egg Message */}
-                      {axolotl ? (
-                        <div className="absolute inset-0 z-10">
-                          <AxolotlDisplay 
-                            axolotl={axolotl} 
-                            foodItems={gameState.foodItems || []}
-                            onEatFood={handleEatFood}
-                          />
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center">
-                          <div className="text-center text-white/80">
-                            <div className="text-6xl mb-4">🥚</div>
-                            <div className="text-lg font-bold mb-2">Your axolotl is being reborn!</div>
-                            <div className="text-sm">Check the Eggs panel to see progress</div>
-                          </div>
-                        </div>
-                      )}
+                      {/* Axolotl */}
+                      <div className="absolute inset-0 z-10">
+                        <AxolotlDisplay 
+                          axolotl={axolotl} 
+                          foodItems={gameState.foodItems || []}
+                          onEatFood={handleEatFood}
+                        />
+                      </div>
                     </div>
                   </div>
                   {/* Scroll Hint - outside scrollable area so it stays visible */}
@@ -1097,8 +1062,8 @@ export default function App() {
                         onWaterChange={handleWaterChange}
                         onRebirth={() => setActiveModal('rebirth')}
                         canRebirth={showRebirthButton}
-                        isHungerFull={axolotl ? axolotl.stats.hunger >= 100 : false}
-                        stats={axolotl ? axolotl.stats : { hunger: 0, happiness: 0, cleanliness: 0, waterQuality: 0 }}
+                        isHungerFull={axolotl.stats.hunger >= 100}
+                        stats={axolotl.stats}
                       />
                     </div>
                   </div>
@@ -1207,7 +1172,7 @@ export default function App() {
         />
       )}
 
-      {activeModal === 'stats' && axolotl && (
+      {activeModal === 'stats' && (
         <StatsModal
           onClose={() => setActiveModal(null)}
           stats={axolotl.secondaryStats}

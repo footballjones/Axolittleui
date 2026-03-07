@@ -180,7 +180,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
           height={size}
           style={{
             transform: facingLeft ? 'scaleX(1)' : 'scaleX(-1)',
-            filter: 'drop-shadow(0 0 8px rgba(160,120,255,0.4)) drop-shadow(0 0 20px rgba(100,180,255,0.3)) drop-shadow(0 4px 12px rgba(0,0,0,0.25)) brightness(1.1)',
+            filter: 'drop-shadow(0 0 8px rgba(160,120,255,0.4)) drop-shadow(0 0 20px rgba(100,180,255,0.3)) drop-shadow(0 4px 12px rgba(0,0,0,0.25))',
             objectFit: 'contain',
           }}
         />
