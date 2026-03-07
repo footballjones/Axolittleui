@@ -43,4 +43,19 @@ export const GAME_CONFIG = {
   // Shrimp system
   shrimpEatenPerDay: 10, // Axolotl eats 10 shrimp per day
   shrimpCleanlinessBonus: 0.1, // Reduces cleanliness decay by 10% per shrimp (capped)
+  
+  // Daily spin wheel
+  spinWheelRewards: {
+    coins: [50, 100, 150, 200, 250, 300], // Small to medium coin rewards
+    opals: [5, 10, 15], // Rare opal rewards
+    opalChance: 0.14, // ~1 in 7 chance for opals
+  },
+  
+  // Daily login bonus
+  dailyLoginCoinBonus: 100, // Coins for daily login
+  loginStreakRewards: {
+    7: { opals: 15, decoration: null },
+    30: { opals: 20, decoration: null },
+    100: { opals: 20, decoration: 'decoration-streak-100' }, // Exclusive decoration
+  },
 } as const;

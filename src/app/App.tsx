@@ -32,6 +32,8 @@ import { XPBar } from './components/XPBar';
 import { FoodDisplay } from './components/FoodDisplay';
 import { EggsPanel } from './components/EggsPanel';
 import { DecorationsPanel } from './components/DecorationsPanel';
+import { SpinWheel } from './components/SpinWheel';
+import { DailyLoginBonus } from './components/DailyLoginBonus';
 import { Coins, Sparkles, Menu, X, Check, ChevronDown, ShoppingCart, Gamepad2, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { INITIAL_NOTIFICATIONS, GameNotification } from './data/notifications';
@@ -46,12 +48,15 @@ import { BiteTag } from './minigames/BiteTag';
 import { GameResult } from './minigames/types';
 import { useGameActions } from './hooks/useGameActions';
 import { useMenuState } from './hooks/useMenuState';
+import { getTodayDateString, calculateLoginStreak, canSpinToday, canClaimDailyLogin } from './utils/dailySystem';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [hasPendingPokes, setHasPendingPokes] = useState(true);
   const [notifications, setNotifications] = useState<GameNotification[]>(INITIAL_NOTIFICATIONS);
   const [notificationsExpanded, setNotificationsExpanded] = useState(true);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [showDailyLogin, setShowDailyLogin] = useState(false);
   
   // Menu state from hook
   const menuState = useMenuState();
@@ -154,9 +159,28 @@ export default function App() {
       if (loaded.nurseryEggs === undefined) {
         loaded.nurseryEggs = [];
       }
+      if (loaded.shrimpCount === undefined) {
+        loaded.shrimpCount = 0;
+      }
+      if (loaded.loginStreak === undefined) {
+        loaded.loginStreak = 0;
+      }
       setGameState(loaded);
+      
+      // Check for daily login bonus on app open
+      const today = getTodayDateString();
+      if (loaded.lastLoginDate !== today) {
+        // Show daily login bonus if not claimed today
+        setTimeout(() => {
+          setShowDailyLogin(true);
+        }, 1000); // Show after 1 second delay
+      }
     } else {
       setGameState(getInitialGameState());
+      // Show daily login for new players
+      setTimeout(() => {
+        setShowDailyLogin(true);
+      }, 2000);
     }
   }, []);
 
@@ -207,6 +231,66 @@ export default function App() {
       ...(prev || getInitialGameState()),
       axolotl: newAxolotl,
     }));
+  }, []);
+
+  const handleSpinWheel = useCallback((reward: { type: 'coins' | 'opals'; amount: number }) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      const today = getTodayDateString();
+      const newCoins = reward.type === 'coins' ? prev.coins + reward.amount : prev.coins;
+      const newOpals = reward.type === 'opals' ? (prev.opals || 0) + reward.amount : prev.opals;
+      
+      setNotifications(prevNotifs => [...prevNotifs, {
+        id: `notif-${Date.now()}`,
+        type: 'milestone',
+        emoji: reward.type === 'opals' ? '🪬' : '🪙',
+        message: `Won ${reward.amount} ${reward.type === 'opals' ? 'Opals' : 'Coins'} from spin wheel!`,
+        time: 'now',
+        read: false,
+      }]);
+      
+      return {
+        ...prev,
+        coins: newCoins,
+        opals: newOpals,
+        lastSpinDate: today,
+      };
+    });
+  }, []);
+
+  const handleDailyLoginClaim = useCallback((reward: { coins: number; opals?: number; decoration?: string }) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      const today = getTodayDateString();
+      const { streak: newStreak } = calculateLoginStreak(prev.lastLoginDate, prev.loginStreak || 0);
+      
+      const newCoins = prev.coins + reward.coins;
+      const newOpals = (prev.opals || 0) + (reward.opals || 0);
+      const newUnlockedDecorations = reward.decoration 
+        ? [...prev.unlockedDecorations, reward.decoration]
+        : prev.unlockedDecorations;
+      
+      setNotifications(prevNotifs => [...prevNotifs, {
+        id: `notif-${Date.now()}`,
+        type: 'milestone',
+        emoji: '🎁',
+        message: `Daily login bonus: ${reward.coins} coins${reward.opals ? ` + ${reward.opals} opals` : ''}!`,
+        time: 'now',
+        read: false,
+      }]);
+      
+      return {
+        ...prev,
+        coins: newCoins,
+        opals: newOpals,
+        lastLoginDate: today,
+        lastLoginBonusDate: today,
+        loginStreak: newStreak,
+        unlockedDecorations: newUnlockedDecorations,
+      };
+    });
   }, []);
 
   // All other handlers are now in useGameActions hook
@@ -516,6 +600,50 @@ export default function App() {
                           <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
                           <span className="text-[2rem]">🥚</span>
                           <span className="text-[11px] font-bold text-violet-700 tracking-wider uppercase">Eggs</span>
+                        </motion.button>
+
+                        {/* SPIN WHEEL */}
+                        <motion.button
+                          onClick={() => setShowSpinWheel(true)}
+                          className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(251,207,232,0.75) 0%, rgba(249,168,212,0.55) 100%)',
+                            border: '1px solid rgba(244,114,182,0.35)',
+                          }}
+                          whileTap={{ scale: 0.93 }}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                          <span className="text-[2rem]">🎰</span>
+                          <span className="text-[11px] font-bold text-pink-700 tracking-wider uppercase">Spin Wheel</span>
+                          {gameState && canSpinToday(gameState.lastSpinDate) && (
+                            <motion.div
+                              className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-md"
+                              animate={{ scale: [1, 1.3, 1] }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                            />
+                          )}
+                        </motion.button>
+
+                        {/* DAILY LOGIN */}
+                        <motion.button
+                          onClick={() => setShowDailyLogin(true)}
+                          className="group relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl overflow-hidden"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(254,243,199,0.75) 0%, rgba(251,191,36,0.55) 100%)',
+                            border: '1px solid rgba(245,158,11,0.35)',
+                          }}
+                          whileTap={{ scale: 0.93 }}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                          <span className="text-[2rem]">🎁</span>
+                          <span className="text-[11px] font-bold text-amber-700 tracking-wider uppercase">Daily Bonus</span>
+                          {gameState && canClaimDailyLogin(gameState.lastLoginDate) && (
+                            <motion.div
+                              className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-md"
+                              animate={{ scale: [1, 1.3, 1] }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                            />
+                          )}
                         </motion.button>
 
                         {/* STATS */}
@@ -1059,6 +1187,29 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Daily Features */}
+      {gameState && (
+        <>
+          <SpinWheel
+            isOpen={showSpinWheel}
+            onClose={() => setShowSpinWheel(false)}
+            onSpin={handleSpinWheel}
+            lastSpinDate={gameState.lastSpinDate}
+            coins={gameState.coins}
+            opals={gameState.opals || 0}
+          />
+          <DailyLoginBonus
+            isOpen={showDailyLogin}
+            onClose={() => setShowDailyLogin(false)}
+            onClaim={handleDailyLoginClaim}
+            lastLoginDate={gameState.lastLoginDate}
+            loginStreak={gameState.loginStreak}
+            coins={gameState.coins}
+            opals={gameState.opals || 0}
+          />
+        </>
+      )}
     </div>
   );
 }

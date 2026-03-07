@@ -134,5 +134,9 @@ export function getInitialGameState(): GameState {
     filterTier: undefined,
     shrimpCount: 0,
     lastShrimpUpdate: undefined,
+    lastSpinDate: undefined,
+    lastLoginDate: undefined,
+    loginStreak: 0,
+    lastLoginBonusDate: undefined,
   };
 }

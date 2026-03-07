@@ -75,6 +75,10 @@ export interface GameState {
   filterTier?: string; // 'filter-basic' | 'filter-advanced' | 'filter-premium'
   shrimpCount?: number; // Number of shrimp in tank (vacation mechanic)
   lastShrimpUpdate?: number; // Timestamp of last shrimp consumption
+  lastSpinDate?: string; // YYYY-MM-DD format for daily spin wheel
+  lastLoginDate?: string; // YYYY-MM-DD format for daily login bonus
+  loginStreak?: number; // Current login streak (days)
+  lastLoginBonusDate?: string; // YYYY-MM-DD format for login bonus tracking
 }
 
 export interface Friend {
