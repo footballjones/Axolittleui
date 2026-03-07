@@ -132,9 +132,9 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
     };
   }, [isPlaying, isPaused, gameLoop]);
 
-  // End game when stopped
+  // End game when stopped (only if game was actually played)
   useEffect(() => {
-    if (!isPlaying) {
+    if (!isPlaying && score > 0) {
       const rewards = calculateRewards('keepey-upey', score);
       onEnd({
         score,
