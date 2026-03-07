@@ -200,9 +200,19 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     const newScore = score + 1;
     setScore(newScore);
 
-    // Scroll camera up
-    const targetCameraY = Math.max(0, (gameStateRef.current.stack.length - 12) * BLOCK_HEIGHT);
-    gameStateRef.current.cameraY = targetCameraY;
+    // Scroll camera up to keep current block and top of stack visible
+    // Start scrolling when we have more than 8 blocks, keep ~8-10 blocks visible
+    const stackHeight = gameStateRef.current.stack.length;
+    if (stackHeight > 8) {
+      // Calculate camera to keep the top blocks near the top of screen
+      // The current block is at top.y - BLOCK_HEIGHT, we want it visible
+      const topBlock = gameStateRef.current.stack[stackHeight - 1];
+      const desiredTopY = 100; // Keep top blocks around this Y position
+      const targetCameraY = Math.max(0, topBlock.y - desiredTopY);
+      gameStateRef.current.cameraY = targetCameraY;
+    } else {
+      gameStateRef.current.cameraY = 0;
+    }
 
     // Spawn next block - removed the narrow check, only end on complete miss
     spawnBlock(newScore);
@@ -220,19 +230,20 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.fillStyle = '#0e2233';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Grid lines - skip on mobile for performance (only draw every 4th line)
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.02)';
-    for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT * 4) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y);
-      ctx.stroke();
-    }
+    // Grid lines - skip entirely for better performance
+    // ctx.strokeStyle = 'rgba(100, 200, 255, 0.02)';
+    // for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT * 4) {
+    //   ctx.beginPath();
+    //   ctx.moveTo(0, y);
+    //   ctx.lineTo(CANVAS_W, y);
+    //   ctx.stroke();
+    // }
 
     ctx.save();
+    // Translate camera - negative Y moves viewport up (shows higher blocks)
     ctx.translate(0, -cameraY);
 
-    // Calculate visible range for culling
+    // Calculate visible range for culling (in world coordinates)
     const visibleTop = cameraY;
     const visibleBottom = cameraY + CANVAS_H;
 
@@ -247,11 +258,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       // Use fillRect for better performance (no rounded corners on mobile)
       ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
 
-      // Highlight - only on top few blocks for performance
-      if (i >= stack.length - 3) {
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
-      }
+      // Highlight - skip for better performance
     }
 
     // Draw current swinging block
@@ -262,18 +269,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
       ctx.globalAlpha = 1;
 
-      // Drop guide lines - skip on mobile for performance (only show on first few blocks)
-      if (score < 5) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-        ctx.setLineDash([8, 8]);
-        ctx.beginPath();
-        ctx.moveTo(current.x, current.y + BLOCK_HEIGHT);
-        ctx.lineTo(current.x, BASE_Y);
-        ctx.moveTo(current.x + current.width, current.y + BLOCK_HEIGHT);
-        ctx.lineTo(current.x + current.width, BASE_Y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      // Drop guide lines - skip entirely for better performance
     }
 
     // Falling pieces - only draw if visible
@@ -294,20 +290,8 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     ctx.fillText(`Height: ${score}`, CANVAS_W - 10, 24);
   }, [isPlaying, score]);
 
-  const lastFrameTimeRef = useRef<number>(0);
-  const targetFPS = 30; // Reduce to 30 FPS for mobile performance
-  const frameInterval = 1000 / targetFPS;
-
-  const gameLoop = useCallback((timestamp: number) => {
+  const gameLoop = useCallback(() => {
     if (!isPlaying || isPaused) return;
-
-    // Throttle frame rate for mobile performance
-    const elapsed = timestamp - lastFrameTimeRef.current;
-    if (elapsed < frameInterval) {
-      animationFrameRef.current = requestAnimationFrame(gameLoop);
-      return;
-    }
-    lastFrameTimeRef.current = timestamp - (elapsed % frameInterval);
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -364,7 +348,6 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
   // Start game loop
   useEffect(() => {
     if (isPlaying && !isPaused) {
-      lastFrameTimeRef.current = performance.now();
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     }
     return () => {
