@@ -219,10 +219,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
           {/* External gills - left side (more realistic feathery appearance) */}
           <g opacity="0.85">
             {/* Front gill */}
-            <motion.g
-              animate={{ opacity: [0.7, 0.9, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            >
+            <g>
               <path
                 d="M 50 80 Q 40 75 35 80 Q 30 85 35 90 Q 40 95 45 95 Q 50 90 50 80"
                 fill="rgba(255,180,180,0.7)"
@@ -230,12 +227,9 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="38" cy="85" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
+            </g>
             {/* Middle gill */}
-            <motion.g
-              animate={{ opacity: [0.75, 0.95, 0.75] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-            >
+            <g>
               <path
                 d="M 48 95 Q 38 90 33 95 Q 28 100 33 105 Q 38 110 43 110 Q 48 105 48 95"
                 fill="rgba(255,180,180,0.7)"
@@ -243,12 +237,9 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="36" cy="100" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
+            </g>
             {/* Back gill */}
-            <motion.g
-              animate={{ opacity: [0.7, 0.9, 0.7] }}
-              transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-            >
+            <g>
               <path
                 d="M 50 110 Q 40 105 35 110 Q 30 115 35 120 Q 40 125 45 125 Q 50 120 50 110"
                 fill="rgba(255,180,180,0.7)"
@@ -256,15 +247,12 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="38" cy="115" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
+            </g>
           </g>
           
           {/* External gills - right side */}
           <g opacity="0.85">
-            <motion.g
-              animate={{ opacity: [0.7, 0.9, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
-            >
+            <g>
               <path
                 d="M 150 80 Q 160 75 165 80 Q 170 85 165 90 Q 160 95 155 95 Q 150 90 150 80"
                 fill="rgba(255,180,180,0.7)"
@@ -272,11 +260,8 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="162" cy="85" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
-            <motion.g
-              animate={{ opacity: [0.75, 0.95, 0.75] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-            >
+            </g>
+            <g>
               <path
                 d="M 152 95 Q 162 90 167 95 Q 172 100 167 105 Q 162 110 157 110 Q 152 105 152 95"
                 fill="rgba(255,180,180,0.7)"
@@ -284,11 +269,8 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="164" cy="100" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
-            <motion.g
-              animate={{ opacity: [0.7, 0.9, 0.7] }}
-              transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
-            >
+            </g>
+            <g>
               <path
                 d="M 150 110 Q 160 105 165 110 Q 170 115 165 120 Q 160 125 155 125 Q 150 120 150 110"
                 fill="rgba(255,180,180,0.7)"
@@ -296,7 +278,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
                 strokeWidth="1"
               />
               <ellipse cx="162" cy="115" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
-            </motion.g>
+            </g>
           </g>
           
           {/* Eyes - more realistic with highlights */}
