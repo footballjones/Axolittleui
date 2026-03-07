@@ -32,7 +32,7 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delayOffset + index * 0.05 }}
       className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg shadow-purple-900/5 overflow-hidden"
-      style={{ transform: 'scale(0.8)' }}
+      style={{ transform: 'scale(0.65)' }}
     >
       <button
         onClick={() => onSelectGame(game.id)}
@@ -195,7 +195,56 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
 
   return (
     <div className="pt-4 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
-      {/* Energy Bar */}
+      {/* Solo Games Section */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl p-2 shadow-md shadow-indigo-500/20">
+            <User className="w-5 h-5 text-white" strokeWidth={2.5} />
+          </div>
+          <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-violet-100 drop-shadow-sm">Solo Games</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {soloGames.map((game, index) => (
+            <GameTile
+              key={game.id}
+              game={game}
+              index={index}
+              expandedId={expandedId}
+              onToggleInfo={toggleInfo}
+              onSelectGame={onSelectGame}
+              energy={energy}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Multiplayer Games Section */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl p-2 shadow-md shadow-rose-500/20">
+            <Users className="w-5 h-5 text-white" strokeWidth={2.5} />
+          </div>
+          <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-rose-100 drop-shadow-sm">Multiplayer Games</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {multiplayerGames.map((game, index) => (
+            <GameTile
+              key={game.id}
+              game={game}
+              index={index}
+              delayOffset={soloGames.length * 0.05}
+              expandedId={expandedId}
+              onToggleInfo={toggleInfo}
+              onSelectGame={onSelectGame}
+              energy={energy}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Energy Bar - moved below game sections */}
       <motion.div
         className="bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-hidden"
         initial={{ opacity: 0, y: -10 }}
