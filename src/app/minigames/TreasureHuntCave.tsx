@@ -158,9 +158,8 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
 
   const gameLoop = useCallback(() => {
     const game = gameRef.current;
-    if (!game.isPlaying || game.isPaused || !game.ctx) return;
-
-    const ctx = game.ctx;
+    const ctx = ctxRef.current;
+    if (!game.isPlaying || game.isPaused || !ctx) return;
     const now = performance.now();
     const deltaTime = game.lastFrameTime > 0 ? (now - game.lastFrameTime) / 16.67 : 1;
     game.lastFrameTime = now;
@@ -328,13 +327,18 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
     game.obstacleId = 0;
     game.gemId = 0;
     game.rng = new SeededRandom(Date.now());
-    game.lastFrameTime = 0;
+    game.lastFrameTime = performance.now();
     game.score = 0;
     setScore(0);
     setShowOverlay(false);
     setGameEnded(false);
     setFinalRewards(null);
-  }, [energy]);
+    
+    // Start game loop immediately
+    if (ctxRef.current && !animationFrameRef.current) {
+      animationFrameRef.current = requestAnimationFrame(gameLoop);
+    }
+  }, [energy, gameLoop]);
 
   // Initialize canvas
   useEffect(() => {
@@ -392,7 +396,7 @@ export function TreasureHuntCave({ onEnd, energy }: MiniGameProps) {
   // Start game loop
   useEffect(() => {
     const game = gameRef.current;
-    if (game.isPlaying && !game.isPaused && game.ctx) {
+    if (game.isPlaying && !game.isPaused && ctxRef.current) {
       if (!animationFrameRef.current) {
         animationFrameRef.current = requestAnimationFrame(gameLoop);
       }
