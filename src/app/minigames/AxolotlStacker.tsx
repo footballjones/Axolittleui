@@ -68,6 +68,44 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     cameraY: 0,
   });
 
+  const spawnBlock = useCallback((currentScore: number) => {
+    const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
+    const speed = SWING_SPEED_BASE + currentScore * 0.15;
+    const width = Math.max(20, top.width - (currentScore > 5 ? 2 : 0));
+    gameStateRef.current.current = {
+      x: 0,
+      width,
+      y: top.y - BLOCK_HEIGHT,
+      speed,
+      direction: 1,
+    };
+  }, []);
+
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    setGameEnded(true);
+    gameStateRef.current.current = null;
+    
+    // Only calculate and show rewards if energy was available at start
+    if (hadEnergyAtStart) {
+      const rewards = calculateRewards('axolotl-stacker', score);
+      setFinalRewards({
+        tier: rewards.tier,
+        xp: rewards.xp,
+        coins: rewards.coins,
+        opals: rewards.opals,
+      });
+    } else {
+      setFinalRewards({
+        tier: 'normal',
+        xp: 0,
+        coins: 0,
+        opals: undefined,
+      });
+    }
+    setShowOverlay(true);
+  }, [score, hadEnergyAtStart]);
+
   const reset = useCallback(() => {
     // Base block
     gameStateRef.current = {
@@ -83,19 +121,6 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     setScore(0);
     spawnBlock(0);
   }, [spawnBlock]);
-
-  const spawnBlock = useCallback((currentScore: number) => {
-    const top = gameStateRef.current.stack[gameStateRef.current.stack.length - 1];
-    const speed = SWING_SPEED_BASE + currentScore * 0.15;
-    const width = Math.max(20, top.width - (currentScore > 5 ? 2 : 0));
-    gameStateRef.current.current = {
-      x: 0,
-      width,
-      y: top.y - BLOCK_HEIGHT,
-      speed,
-      direction: 1,
-    };
-  }, []);
 
   const dropBlock = useCallback(() => {
     if (!isPlaying || isPaused || !gameStateRef.current.current) return;
@@ -165,31 +190,6 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
 
     spawnBlock(newScore);
   }, [isPlaying, isPaused, score, spawnBlock, endGame]);
-
-  const endGame = useCallback(() => {
-    setIsPlaying(false);
-    setGameEnded(true);
-    gameStateRef.current.current = null;
-    
-    // Only calculate and show rewards if energy was available at start
-    if (hadEnergyAtStart) {
-      const rewards = calculateRewards('axolotl-stacker', score);
-      setFinalRewards({
-        tier: rewards.tier,
-        xp: rewards.xp,
-        coins: rewards.coins,
-        opals: rewards.opals,
-      });
-    } else {
-      setFinalRewards({
-        tier: 'normal',
-        xp: 0,
-        coins: 0,
-        opals: undefined,
-      });
-    }
-    setShowOverlay(true);
-  }, [score, hadEnergyAtStart]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     const { stack, current, fallingPieces, cameraY } = gameStateRef.current;
