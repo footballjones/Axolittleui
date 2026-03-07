@@ -216,7 +216,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       const color = i === 0 ? '#556' : COLORS[(i - 1) % COLORS.length];
       ctx.fillStyle = color;
       ctx.beginPath();
-      if (ctx.roundRect) {
+      if (typeof ctx.roundRect === 'function') {
         ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
       } else {
         // Fallback for browsers without roundRect
@@ -234,7 +234,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       ctx.fillStyle = COLORS[score % COLORS.length];
       ctx.globalAlpha = 0.9;
       ctx.beginPath();
-      if (ctx.roundRect) {
+      if (typeof ctx.roundRect === 'function') {
         ctx.roundRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2, 4);
       } else {
         ctx.fillRect(current.x, current.y, current.width, BLOCK_HEIGHT - 2);
@@ -317,18 +317,7 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     setFinalRewards(null);
     setIsPlaying(true);
     setIsPaused(false);
-    
-    // Force initial draw
-    setTimeout(() => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (ctx) {
-          draw(ctx);
-        }
-      }
-    }, 0);
-  }, [reset, energy, draw]);
+  }, [reset, energy]);
 
   // Start game loop
   useEffect(() => {
@@ -374,40 +363,50 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
       cameraY: 0,
     };
     
-    // Draw initial state
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d', { alpha: false });
-      if (ctx) {
-        // Draw background
-        ctx.fillStyle = '#0e2233';
-        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        
-        // Draw grid
-        ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
-        for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(CANVAS_W, y);
-          ctx.stroke();
+    // Draw initial state after a small delay to ensure canvas is mounted
+    const timeoutId = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        try {
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (ctx) {
+            // Draw background
+            ctx.fillStyle = '#0e2233';
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
+            for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT) {
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(CANVAS_W, y);
+              ctx.stroke();
+            }
+            
+            // Draw base block
+            const b = gameStateRef.current.stack[0];
+            if (b) {
+              ctx.fillStyle = '#556';
+              ctx.beginPath();
+              if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
+              } else {
+                ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
+              }
+              ctx.fill();
+              
+              // Draw highlight
+              ctx.fillStyle = 'rgba(255,255,255,0.15)';
+              ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
+            }
+          }
+        } catch (error) {
+          console.error('Error drawing initial canvas state:', error);
         }
-        
-        // Draw base block
-        const b = gameStateRef.current.stack[0];
-        ctx.fillStyle = '#556';
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
-        } else {
-          ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
-        }
-        ctx.fill();
-        
-        // Draw highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
       }
-    }
+    }, 10);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return (
