@@ -153,13 +153,33 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
 
     // Obstacles (rocks / coral)
     for (const ob of obstacles) {
+      // Draw rounded rectangle (polyfill for roundRect if not available)
+      const drawRoundedRect = (x: number, y: number, w: number, h: number, r: number) => {
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y, w, h, r);
+        } else {
+          // Polyfill for browsers without roundRect
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + w - r, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+          ctx.lineTo(x + w, y + h - r);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+          ctx.lineTo(x + r, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+        }
+      };
+
       ctx.fillStyle = '#5a3a2a';
       ctx.beginPath();
-      ctx.roundRect(ob.x, ob.y, ob.width, ob.height, 6);
+      drawRoundedRect(ob.x, ob.y, ob.width, ob.height, 6);
       ctx.fill();
       ctx.fillStyle = '#6b4a38';
       ctx.beginPath();
-      ctx.roundRect(ob.x + 3, ob.y + 3, ob.width - 6, ob.height - 6, 4);
+      drawRoundedRect(ob.x + 3, ob.y + 3, ob.width - 6, ob.height - 6, 4);
       ctx.fill();
     }
 
