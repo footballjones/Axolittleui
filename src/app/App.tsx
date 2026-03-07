@@ -321,7 +321,7 @@ export default function App() {
           
           <div className="relative z-10 bg-white backdrop-blur-2xl rounded-none sm:rounded-[2rem] shadow-2xl border-0 sm:border border-white/60 flex flex-col h-full min-h-0">
             {/* Floating Header HUD - overlays content */}
-            <div className="absolute top-0 left-0 right-0 z-40 px-3 sm:px-5 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 pointer-events-none rounded-t-none sm:rounded-t-[2rem] overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 z-40 px-3 sm:px-5 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 pointer-events-none rounded-t-none sm:rounded-t-[2rem] overflow-hidden" style={{ height: 'auto' }}>
               {/* Gradient fade behind header */}
               <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/60 via-purple-900/30 to-transparent pointer-events-none" />
               
@@ -923,10 +923,12 @@ export default function App() {
             </AnimatePresence>
 
             {/* Content Area - Changes based on currentScreen */}
+            {/* Add padding-top to account for absolutely positioned header (header is ~5rem tall) */}
+            <div className="flex-1 min-h-0 flex flex-col" style={{ paddingTop: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)' }}>
             {currentScreen === 'home' ? (
               <>
                 {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
-                <div className="relative flex-1 sm:rounded-[2rem] overflow-hidden">
+                <div className="relative flex-1 sm:rounded-[2rem] overflow-hidden" style={{ minHeight: 0 }}>
                   <div 
                     ref={aquariumScrollRef}
                     className="absolute inset-0 overflow-x-auto overflow-y-hidden"
@@ -1037,10 +1039,11 @@ export default function App() {
             ) : (
               /* Mini Games Screen */
               <div 
-                className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gradient-to-br from-indigo-300/90 via-purple-300/90 to-pink-300/90 pt-[calc(max(0.5rem,env(safe-area-inset-top))+2.5rem)]" 
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gradient-to-br from-indigo-300/90 via-purple-300/90 to-pink-300/90"
                 style={{ 
                   WebkitOverflowScrolling: 'touch',
                   touchAction: 'pan-y',
+                  paddingTop: '0.5rem',
                 }}
               >
                 <MiniGameMenu
@@ -1076,6 +1079,7 @@ export default function App() {
                 />
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
