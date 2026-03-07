@@ -196,7 +196,7 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
           f.caught = true;
           gameStateRef.current.botHooked = f;
           gameStateRef.current.botHookTime = now;
-          gameStateRef.current.botReelDelay = 100 + Math.random() * 200; // Faster reel: 100-300ms instead of 210-1050ms
+          gameStateRef.current.botReelDelay = 0 + Math.random() * 50; // Very fast reel: 0-50ms (almost instant)
           gameStateRef.current.botState = 'BOT_HOOKED';
           return true;
         }
@@ -350,7 +350,7 @@ export function Fishing({ onEnd, energy, strength = 0, speed = 0 }: MiniGameProp
             state.botHooked = null;
           }
           state.botState = 'BOT_IDLE';
-          state.botNextCast = now + 840 + Math.random() * 980;
+          state.botNextCast = now + 200 + Math.random() * 200; // Much faster: 200-400ms instead of 840-1820ms
         }
         break;
     }

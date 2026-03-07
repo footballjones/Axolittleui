@@ -3,11 +3,10 @@
  * One free spin per day with coin/opal rewards
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
-import { GAME_CONFIG } from '../config/game';
-import { canSpinToday, getTodayDateString } from '../utils/dailySystem';
+import { canSpinToday } from '../utils/dailySystem';
 
 interface SpinWheelProps {
   isOpen: boolean;
@@ -18,19 +17,19 @@ interface SpinWheelProps {
   opals: number;
 }
 
-// Reordered to separate opal sections, and opal sections have smaller visual size
+// Wheel sections - opals are smaller and separated
 const WHEEL_SECTIONS = [
-  { label: '50 Coins', value: 50, type: 'coins' as const, weight: 3, visualSize: 1 },
-  { label: '100 Coins', value: 100, type: 'coins' as const, weight: 3, visualSize: 1 },
-  { label: '5 Opals', value: 5, type: 'opals' as const, weight: 1, visualSize: 0.5 },
-  { label: '150 Coins', value: 150, type: 'coins' as const, weight: 2, visualSize: 1 },
-  { label: '200 Coins', value: 200, type: 'coins' as const, weight: 2, visualSize: 1 },
-  { label: '10 Opals', value: 10, type: 'opals' as const, weight: 1, visualSize: 0.5 },
-  { label: '250 Coins', value: 250, type: 'coins' as const, weight: 1, visualSize: 1 },
-  { label: '300 Coins', value: 300, type: 'coins' as const, weight: 1, visualSize: 1 },
+  { label: '50 Coins', value: 50, type: 'coins' as const, weight: 3, size: 1 },
+  { label: '100 Coins', value: 100, type: 'coins' as const, weight: 3, size: 1 },
+  { label: '5 Opals', value: 5, type: 'opals' as const, weight: 1, size: 0.5 },
+  { label: '150 Coins', value: 150, type: 'coins' as const, weight: 2, size: 1 },
+  { label: '200 Coins', value: 200, type: 'coins' as const, weight: 2, size: 1 },
+  { label: '10 Opals', value: 10, type: 'opals' as const, weight: 1, size: 0.5 },
+  { label: '250 Coins', value: 250, type: 'coins' as const, weight: 1, size: 1 },
+  { label: '300 Coins', value: 300, type: 'coins' as const, weight: 1, size: 1 },
 ];
 
-// Create weighted array for spinning
+// Create weighted array for probability
 const WEIGHTED_SECTIONS: Array<{ label: string; value: number; type: 'coins' | 'opals' }> = [];
 WHEEL_SECTIONS.forEach(section => {
   for (let i = 0; i < section.weight; i++) {
@@ -50,6 +49,10 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
   
   const canSpin = canSpinToday(lastSpinDate);
 
+  // Calculate total size and angles
+  const totalSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.size, 0);
+  const anglePerUnit = 360 / totalSize;
+
   const handleSpin = useCallback(() => {
     if (isSpinning || !canSpin) return;
 
@@ -57,46 +60,49 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
     setShowResult(false);
     setSelectedReward(null);
 
-    // Random reward based on weights
+    // Pick random reward based on weights
     const randomIndex = Math.floor(Math.random() * WEIGHTED_SECTIONS.length);
     const reward = WEIGHTED_SECTIONS[randomIndex];
     
-    // Calculate visual angles based on visualSize
-    const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
-    const anglePerUnit = 360 / totalVisualSize;
-    
-    // Find target section and calculate its center angle
+    // Find which section this reward corresponds to
     const targetSectionIndex = WHEEL_SECTIONS.findIndex(s => 
       s.value === reward.value && s.type === reward.type
     );
     
+    if (targetSectionIndex === -1) {
+      console.error('Could not find section for reward', reward);
+      setIsSpinning(false);
+      return;
+    }
+    
+    // Calculate the center angle of the target section (in degrees, starting from top)
+    // SVG is rotated -90deg, so first section starts at top (0deg in our coordinate system)
     let cumulativeAngle = 0;
     for (let i = 0; i < targetSectionIndex; i++) {
-      cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
+      cumulativeAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
     }
-    // Center of target section
-    const targetAngle = cumulativeAngle + (WHEEL_SECTIONS[targetSectionIndex].visualSize * anglePerUnit) / 2;
+    const sectionCenterAngle = cumulativeAngle + (WHEEL_SECTIONS[targetSectionIndex].size * anglePerUnit) / 2;
     
-    // Spin multiple times (3-5 full rotations) then land on target
-    const fullSpins = 3 + Math.random() * 2; // 3-5 spins
-    const finalRotation = fullSpins * 360 + (360 - targetAngle);
+    // Pointer is at top (0 degrees in our coordinate system)
+    // We want the section center to align with the pointer after rotation
+    // Since we're rotating clockwise, we need: currentPosition + rotation = 0 (pointer position)
+    // So: rotation = 360 - sectionCenterAngle (to bring it to top)
+    // Add multiple full spins for effect (4-6 spins)
+    const fullSpins = 4 + Math.random() * 2; // 4-6 full rotations
+    const finalRotation = fullSpins * 360 + (360 - sectionCenterAngle);
     
     setRotation(finalRotation);
 
-    // After animation, show result
+    // Show result after animation
     setTimeout(() => {
       setIsSpinning(false);
       setSelectedReward({ type: reward.type, amount: reward.value });
       setShowResult(true);
       onSpin({ type: reward.type, amount: reward.value });
-    }, 3500); // Match animation duration
-  }, [isSpinning, canSpin, onSpin]);
+    }, 4000);
+  }, [isSpinning, canSpin, onSpin, anglePerUnit]);
 
   if (!isOpen) return null;
-
-  // Calculate angles for rendering
-  const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
-  const anglePerUnit = 360 / totalVisualSize;
 
   return (
     <AnimatePresence>
@@ -150,153 +156,8 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
               {/* Wheel Container */}
               <div className="px-6 pb-6">
                 <div className="relative w-72 h-72 mx-auto mb-6">
-                  {/* Outer glow ring */}
-                  <div 
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)',
-                      filter: 'blur(20px)',
-                    }}
-                  />
-                  
-                  {/* Wheel container with shadow */}
-                  <div 
-                    className="absolute inset-2 rounded-full"
-                    style={{
-                      boxShadow: 'inset 0 0 40px rgba(0,0,0,0.4), 0 10px 40px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    {/* Wheel background with border */}
-                    <div className="absolute inset-0 rounded-full border-4 border-black/40" />
-                    
-                    {/* Spinning wheel */}
-                    <motion.div
-                      className="w-full h-full rounded-full overflow-hidden"
-                      animate={{ rotate: rotation }}
-                      transition={{ 
-                        duration: 3.5, 
-                        ease: [0.25, 0.1, 0.25, 1], // Smooth ease out
-                      }}
-                      style={{ transformOrigin: 'center' }}
-                    >
-                      {/* Wheel sections with gradients */}
-                      <div 
-                        className="w-full h-full"
-                        style={{
-                          background: (() => {
-                            let currentAngle = 0;
-                            
-                            return `conic-gradient(
-                              ${WHEEL_SECTIONS.map((section) => {
-                                const start = currentAngle;
-                                const sectionAngle = section.visualSize * anglePerUnit;
-                                const end = currentAngle + sectionAngle;
-                                currentAngle = end;
-                                
-                                if (section.type === 'opals') {
-                                  // Rich purple gradient for opals
-                                  return `#8b5cf6 ${start}deg, #7c3aed ${start + sectionAngle * 0.3}deg, #6d28d9 ${start + sectionAngle * 0.7}deg, #8b5cf6 ${end}deg`;
-                                } else {
-                                  // Rich gold gradient for coins
-                                  return `#fbbf24 ${start}deg, #f59e0b ${start + sectionAngle * 0.3}deg, #d97706 ${start + sectionAngle * 0.7}deg, #fbbf24 ${end}deg`;
-                                }
-                              }).join(', ')}
-                            )`;
-                          })(),
-                        }}
-                      />
-                      
-                      {/* Section dividers with shadow */}
-                      {WHEEL_SECTIONS.map((section, index) => {
-                        let cumulativeAngle = 0;
-                        for (let i = 0; i < index; i++) {
-                          cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
-                        }
-                        return (
-                          <div
-                            key={`divider-${index}`}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-20"
-                            style={{
-                              width: '3px',
-                              height: '50%',
-                              background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%)',
-                              boxShadow: '0 0 4px rgba(0,0,0,0.6)',
-                              transform: `rotate(${cumulativeAngle}deg)`,
-                            }}
-                          />
-                        );
-                      })}
-                      
-                      {/* Final divider at 360deg */}
-                      <div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-20"
-                        style={{
-                          width: '3px',
-                          height: '50%',
-                          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%)',
-                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
-                          transform: 'rotate(360deg)',
-                        }}
-                      />
-                      
-                      {/* Section labels with better styling */}
-                      {WHEEL_SECTIONS.map((section, index) => {
-                        let cumulativeAngle = 0;
-                        for (let i = 0; i < index; i++) {
-                          cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
-                        }
-                        const sectionCenter = cumulativeAngle + (section.visualSize * anglePerUnit) / 2;
-                        const isOpal = section.type === 'opals';
-                        return (
-                          <div
-                            key={index}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
-                            style={{
-                              transform: `rotate(${sectionCenter}deg) translateY(-${isOpal ? 70 : 85}px) rotate(${-sectionCenter}deg)`,
-                            }}
-                          >
-                            <span 
-                              className="font-black text-white whitespace-nowrap"
-                              style={{
-                                fontSize: isOpal ? '10px' : '11px',
-                                textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5)',
-                                letterSpacing: '0.5px',
-                              }}
-                            >
-                              {section.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      
-                      {/* Inner shine overlay */}
-                      <div 
-                        className="absolute inset-0 rounded-full pointer-events-none"
-                        style={{
-                          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        }}
-                      />
-                    </motion.div>
-                    
-                    {/* Center hub with shadow */}
-                    <div 
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full"
-                      style={{
-                        width: '60px',
-                        height: '60px',
-                        background: 'linear-gradient(145deg, #4c1d95 0%, #312e81 50%, #1e1b4b 100%)',
-                        border: '3px solid rgba(139,92,246,0.6)',
-                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4)',
-                      }}
-                    >
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-2xl">🎯</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top pointer with arrow design */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+                  {/* Pointer at top */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
                     <div 
                       className="relative"
                       style={{
@@ -318,6 +179,133 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         borderTop: '26px solid #4c1d95',
                       }}
                     />
+                  </div>
+
+                  {/* Wheel wrapper */}
+                  <div className="absolute inset-0 rounded-full overflow-hidden">
+                    {/* Outer border */}
+                    <div className="absolute inset-0 rounded-full border-4 border-black/50" />
+                    
+                    {/* Spinning wheel */}
+                    <motion.div
+                      className="w-full h-full"
+                      animate={{ rotate: rotation }}
+                      transition={{ 
+                        duration: 4, 
+                        ease: [0.25, 0.1, 0.25, 1],
+                      }}
+                      style={{ transformOrigin: 'center' }}
+                    >
+                      {/* SVG wheel for precise rendering - rotated so first section starts at top */}
+                      <svg width="100%" height="100%" viewBox="0 0 300 300" style={{ transform: 'rotate(-90deg)' }}>
+                        <defs>
+                          <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="50%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#d97706" />
+                          </linearGradient>
+                          <linearGradient id="opalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#8b5cf6" />
+                            <stop offset="50%" stopColor="#7c3aed" />
+                            <stop offset="100%" stopColor="#6d28d9" />
+                          </linearGradient>
+                        </defs>
+                        
+                        {WHEEL_SECTIONS.map((section, index) => {
+                          // Calculate angles in our coordinate system (starting from top after -90deg rotation)
+                          let startAngle = 0;
+                          for (let i = 0; i < index; i++) {
+                            startAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
+                          }
+                          const sectionAngle = section.size * anglePerUnit;
+                          const endAngle = startAngle + sectionAngle;
+                          
+                          // Convert to radians for SVG (SVG 0deg is right, but we rotated -90deg so 0deg is now top)
+                          const startRad = ((startAngle - 90) * Math.PI) / 180;
+                          const endRad = ((endAngle - 90) * Math.PI) / 180;
+                          
+                          const centerX = 150;
+                          const centerY = 150;
+                          const radius = 145;
+                          
+                          const x1 = centerX + radius * Math.cos(startRad);
+                          const y1 = centerY + radius * Math.sin(startRad);
+                          const x2 = centerX + radius * Math.cos(endRad);
+                          const y2 = centerY + radius * Math.sin(endRad);
+                          
+                          const largeArc = sectionAngle > 180 ? 1 : 0;
+                          
+                          const pathData = [
+                            `M ${centerX} ${centerY}`,
+                            `L ${x1} ${y1}`,
+                            `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+                            'Z'
+                          ].join(' ');
+                          
+                          return (
+                            <g key={index}>
+                              <path
+                                d={pathData}
+                                fill={section.type === 'opals' ? 'url(#opalGrad)' : 'url(#coinGrad)'}
+                                stroke="#000000"
+                                strokeWidth="3"
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                      
+                      {/* Labels - positioned relative to wheel rotation */}
+                      {WHEEL_SECTIONS.map((section, index) => {
+                        let startAngle = 0;
+                        for (let i = 0; i < index; i++) {
+                          startAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
+                        }
+                        const sectionAngle = section.size * anglePerUnit;
+                        const centerAngle = startAngle + sectionAngle / 2;
+                        
+                        // SVG is rotated -90deg, so we need to adjust for label positioning
+                        // Labels rotate with the wheel, so we use centerAngle directly
+                        const radius = 110;
+                        
+                        return (
+                          <div
+                            key={`label-${index}`}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                            style={{
+                              transform: `rotate(${centerAngle}deg) translateY(-${radius}px) rotate(${-centerAngle}deg)`,
+                            }}
+                          >
+                            <span 
+                              className="font-black text-white whitespace-nowrap"
+                              style={{
+                                fontSize: section.type === 'opals' ? '10px' : '11px',
+                                textShadow: '2px 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)',
+                                letterSpacing: '0.5px',
+                              }}
+                            >
+                              {section.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                    
+                    {/* Center hub */}
+                    <div 
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        background: 'linear-gradient(145deg, #4c1d95 0%, #312e81 50%, #1e1b4b 100%)',
+                        border: '3px solid rgba(139,92,246,0.6)',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4)',
+                      }}
+                    >
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-2xl">🎯</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
