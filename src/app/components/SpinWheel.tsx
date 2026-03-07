@@ -20,25 +20,24 @@ interface SpinWheelProps {
 
 // Reordered to separate opal sections, and opal sections have smaller visual size
 const WHEEL_SECTIONS = [
-  { label: '50 Coins', value: 50, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3, visualSize: 1 },
-  { label: '100 Coins', value: 100, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 3, visualSize: 1 },
-  { label: '5 Opals', value: 5, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1, visualSize: 0.5 },
-  { label: '150 Coins', value: 150, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2, visualSize: 1 },
-  { label: '200 Coins', value: 200, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 2, visualSize: 1 },
-  { label: '10 Opals', value: 10, type: 'opals' as const, color: 'from-purple-400 to-pink-500', weight: 1, visualSize: 0.5 },
-  { label: '250 Coins', value: 250, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1, visualSize: 1 },
-  { label: '300 Coins', value: 300, type: 'coins' as const, color: 'from-amber-400 to-yellow-500', weight: 1, visualSize: 1 },
+  { label: '50 Coins', value: 50, type: 'coins' as const, weight: 3, visualSize: 1 },
+  { label: '100 Coins', value: 100, type: 'coins' as const, weight: 3, visualSize: 1 },
+  { label: '5 Opals', value: 5, type: 'opals' as const, weight: 1, visualSize: 0.5 },
+  { label: '150 Coins', value: 150, type: 'coins' as const, weight: 2, visualSize: 1 },
+  { label: '200 Coins', value: 200, type: 'coins' as const, weight: 2, visualSize: 1 },
+  { label: '10 Opals', value: 10, type: 'opals' as const, weight: 1, visualSize: 0.5 },
+  { label: '250 Coins', value: 250, type: 'coins' as const, weight: 1, visualSize: 1 },
+  { label: '300 Coins', value: 300, type: 'coins' as const, weight: 1, visualSize: 1 },
 ];
 
 // Create weighted array for spinning
-const WEIGHTED_SECTIONS: Array<{ label: string; value: number; type: 'coins' | 'opals'; color: string }> = [];
+const WEIGHTED_SECTIONS: Array<{ label: string; value: number; type: 'coins' | 'opals' }> = [];
 WHEEL_SECTIONS.forEach(section => {
   for (let i = 0; i < section.weight; i++) {
     WEIGHTED_SECTIONS.push({
       label: section.label,
       value: section.value,
       type: section.type,
-      color: section.color,
     });
   }
 });
@@ -90,10 +89,14 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
       setSelectedReward({ type: reward.type, amount: reward.value });
       setShowResult(true);
       onSpin({ type: reward.type, amount: reward.value });
-    }, 3000); // Match animation duration
+    }, 3500); // Match animation duration
   }, [isSpinning, canSpin, onSpin]);
 
   if (!isOpen) return null;
+
+  // Calculate angles for rendering
+  const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
+  const anglePerUnit = 360 / totalVisualSize;
 
   return (
     <AnimatePresence>
@@ -101,7 +104,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -119,52 +122,68 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
             <div
               className="w-full max-w-md rounded-3xl overflow-hidden"
               style={{
-                background: 'linear-gradient(160deg, #f5f3ff 0%, #ede9fe 60%, #fef9c3 100%)',
-                border: '2px solid rgba(168,85,247,0.4)',
-                boxShadow: '0 20px 60px rgba(168,85,247,0.3)',
+                background: 'linear-gradient(145deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
+                border: '3px solid rgba(139,92,246,0.5)',
+                boxShadow: '0 25px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
               }}
             >
               {/* Header */}
               <div className="relative px-6 pt-6 pb-4">
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 rounded-full p-1.5 border border-violet-200/60 bg-white/60 active:bg-white/90"
+                  className="absolute top-4 right-4 rounded-full p-2 border border-violet-400/30 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-sm transition-colors"
                 >
-                  <X className="w-4 h-4 text-violet-400" strokeWidth={2.5} />
+                  <X className="w-4 h-4 text-violet-200" strokeWidth={2.5} />
                 </button>
 
                 <div className="text-center">
-                  <div className="text-5xl mb-3">🎰</div>
-                  <h2 className="text-2xl font-bold text-violet-800 mb-1">
+                  <div className="text-5xl mb-3 drop-shadow-lg">🎰</div>
+                  <h2 className="text-2xl font-black text-white mb-1 drop-shadow-md">
                     Daily Spin Wheel
                   </h2>
-                  <p className="text-sm text-violet-600">
+                  <p className="text-sm text-violet-200/80">
                     {canSpin ? 'Spin to win coins or opals!' : 'Come back tomorrow for another spin!'}
                   </p>
                 </div>
               </div>
 
-              {/* Wheel */}
+              {/* Wheel Container */}
               <div className="px-6 pb-6">
-                <div className="relative w-64 h-64 mx-auto mb-6">
-                  {/* Wheel container */}
-                  <div className="absolute inset-0 rounded-full border-4 border-violet-300 overflow-hidden">
+                <div className="relative w-72 h-72 mx-auto mb-6">
+                  {/* Outer glow ring */}
+                  <div 
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)',
+                      filter: 'blur(20px)',
+                    }}
+                  />
+                  
+                  {/* Wheel container with shadow */}
+                  <div 
+                    className="absolute inset-2 rounded-full"
+                    style={{
+                      boxShadow: 'inset 0 0 40px rgba(0,0,0,0.4), 0 10px 40px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    {/* Wheel background with border */}
+                    <div className="absolute inset-0 rounded-full border-4 border-black/40" />
+                    
+                    {/* Spinning wheel */}
                     <motion.div
-                      className="w-full h-full"
+                      className="w-full h-full rounded-full overflow-hidden"
                       animate={{ rotate: rotation }}
                       transition={{ 
-                        duration: 3, 
-                        ease: [0.43, 0.13, 0.23, 0.96], // Ease out cubic
+                        duration: 3.5, 
+                        ease: [0.25, 0.1, 0.25, 1], // Smooth ease out
                       }}
                       style={{ transformOrigin: 'center' }}
                     >
-                      {/* Wheel sections using conic-gradient with variable sizes */}
+                      {/* Wheel sections with gradients */}
                       <div 
                         className="w-full h-full"
                         style={{
                           background: (() => {
-                            const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
-                            const anglePerUnit = 360 / totalVisualSize;
                             let currentAngle = 0;
                             
                             return `conic-gradient(
@@ -173,18 +192,22 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                                 const sectionAngle = section.visualSize * anglePerUnit;
                                 const end = currentAngle + sectionAngle;
                                 currentAngle = end;
-                                const isOpal = section.type === 'opals';
-                                const color = isOpal ? '#a78bfa' : '#fbbf24';
-                                return `${color} ${start}deg ${end}deg`;
+                                
+                                if (section.type === 'opals') {
+                                  // Rich purple gradient for opals
+                                  return `#8b5cf6 ${start}deg, #7c3aed ${start + sectionAngle * 0.3}deg, #6d28d9 ${start + sectionAngle * 0.7}deg, #8b5cf6 ${end}deg`;
+                                } else {
+                                  // Rich gold gradient for coins
+                                  return `#fbbf24 ${start}deg, #f59e0b ${start + sectionAngle * 0.3}deg, #d97706 ${start + sectionAngle * 0.7}deg, #fbbf24 ${end}deg`;
+                                }
                               }).join(', ')}
                             )`;
                           })(),
                         }}
                       />
-                      {/* Black divider lines */}
+                      
+                      {/* Section dividers with shadow */}
                       {WHEEL_SECTIONS.map((section, index) => {
-                        const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
-                        const anglePerUnit = 360 / totalVisualSize;
                         let cumulativeAngle = 0;
                         for (let i = 0; i < index; i++) {
                           cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
@@ -192,55 +215,109 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         return (
                           <div
                             key={`divider-${index}`}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-10"
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-20"
                             style={{
-                              width: '2px',
+                              width: '3px',
                               height: '50%',
-                              background: '#000000',
+                              background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%)',
+                              boxShadow: '0 0 4px rgba(0,0,0,0.6)',
                               transform: `rotate(${cumulativeAngle}deg)`,
                             }}
                           />
                         );
                       })}
-                      {/* Final divider line at 360deg (same as 0deg) */}
+                      
+                      {/* Final divider at 360deg */}
                       <div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-10"
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-bottom z-20"
                         style={{
-                          width: '2px',
+                          width: '3px',
                           height: '50%',
-                          background: '#000000',
+                          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%)',
+                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
                           transform: 'rotate(360deg)',
                         }}
                       />
-                      {/* Section labels */}
+                      
+                      {/* Section labels with better styling */}
                       {WHEEL_SECTIONS.map((section, index) => {
-                        const totalVisualSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.visualSize, 0);
-                        const anglePerUnit = 360 / totalVisualSize;
                         let cumulativeAngle = 0;
                         for (let i = 0; i < index; i++) {
                           cumulativeAngle += WHEEL_SECTIONS[i].visualSize * anglePerUnit;
                         }
                         const sectionCenter = cumulativeAngle + (section.visualSize * anglePerUnit) / 2;
+                        const isOpal = section.type === 'opals';
                         return (
                           <div
                             key={index}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
                             style={{
-                              transform: `rotate(${sectionCenter}deg) translateY(-80px) rotate(${-sectionCenter}deg)`,
+                              transform: `rotate(${sectionCenter}deg) translateY(-${isOpal ? 70 : 85}px) rotate(${-sectionCenter}deg)`,
                             }}
                           >
-                            <span className="text-[9px] font-bold text-white drop-shadow-md whitespace-nowrap">
+                            <span 
+                              className="font-black text-white whitespace-nowrap"
+                              style={{
+                                fontSize: isOpal ? '10px' : '11px',
+                                textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5)',
+                                letterSpacing: '0.5px',
+                              }}
+                            >
                               {section.label}
                             </span>
                           </div>
                         );
                       })}
+                      
+                      {/* Inner shine overlay */}
+                      <div 
+                        className="absolute inset-0 rounded-full pointer-events-none"
+                        style={{
+                          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
+                        }}
+                      />
                     </motion.div>
-
-                    {/* Center pointer */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                      <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-t-[20px] border-l-transparent border-r-transparent border-t-violet-600 drop-shadow-lg" />
+                    
+                    {/* Center hub with shadow */}
+                    <div 
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        background: 'linear-gradient(145deg, #4c1d95 0%, #312e81 50%, #1e1b4b 100%)',
+                        border: '3px solid rgba(139,92,246,0.6)',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4)',
+                      }}
+                    >
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-2xl">🎯</div>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Top pointer with arrow design */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+                    <div 
+                      className="relative"
+                      style={{
+                        width: '0',
+                        height: '0',
+                        borderLeft: '20px solid transparent',
+                        borderRight: '20px solid transparent',
+                        borderTop: '30px solid #1e1b4b',
+                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+                      }}
+                    />
+                    <div 
+                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full"
+                      style={{
+                        width: '0',
+                        height: '0',
+                        borderLeft: '18px solid transparent',
+                        borderRight: '18px solid transparent',
+                        borderTop: '26px solid #4c1d95',
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -248,19 +325,26 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                 <AnimatePresence>
                   {showResult && selectedReward && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 mb-4 border-2 border-violet-300"
+                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                      className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-5 mb-4 border-2 border-violet-400/50 shadow-xl"
+                      style={{
+                        boxShadow: '0 10px 30px rgba(139,92,246,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                      }}
                     >
                       <div className="text-center">
-                        <div className="text-4xl mb-2">
-                          {selectedReward.type === 'opals' ? '🪬' : '🪙'}
-                        </div>
-                        <p className="text-lg font-bold text-violet-800 mb-1">
+                        <motion.div 
+                          className="text-5xl mb-3"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          {selectedReward.type === 'opals' ? '💎' : '🪙'}
+                        </motion.div>
+                        <p className="text-xl font-black text-white mb-1 drop-shadow-lg">
                           You won {selectedReward.amount} {selectedReward.type === 'opals' ? 'Opals' : 'Coins'}!
                         </p>
-                        <p className="text-xs text-violet-600">
+                        <p className="text-sm text-violet-100 font-semibold">
                           {selectedReward.type === 'opals' ? 'Rare reward! 🎉' : 'Nice spin!'}
                         </p>
                       </div>
@@ -272,19 +356,35 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                 <motion.button
                   onClick={handleSpin}
                   disabled={isSpinning || !canSpin}
-                  className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 rounded-xl font-black text-white disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
                   style={{
                     background: canSpin && !isSpinning
-                      ? 'linear-gradient(135deg, rgba(168,85,247,0.9) 0%, rgba(217,70,239,0.9) 100%)'
-                      : 'linear-gradient(135deg, rgba(203,213,225,0.9) 0%, rgba(148,163,184,0.9) 100%)',
+                      ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)'
+                      : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+                    boxShadow: canSpin && !isSpinning
+                      ? '0 8px 20px rgba(139,92,246,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
+                      : '0 4px 10px rgba(0,0,0,0.2)',
+                    border: canSpin && !isSpinning ? '2px solid rgba(167,139,250,0.5)' : '2px solid rgba(100,116,139,0.3)',
                   }}
-                  whileTap={canSpin && !isSpinning ? { scale: 0.95 } : {}}
+                  whileTap={canSpin && !isSpinning ? { scale: 0.96 } : {}}
+                  whileHover={canSpin && !isSpinning ? { 
+                    boxShadow: '0 12px 28px rgba(139,92,246,0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  } : {}}
                 >
-                  {isSpinning ? 'Spinning...' : canSpin ? 'Spin Now!' : 'Already Spun Today'}
+                  {isSpinning && (
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      animate={{ x: ['-100%', '200%'] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                    />
+                  )}
+                  <span className="relative z-10 text-lg tracking-wide">
+                    {isSpinning ? 'Spinning...' : canSpin ? 'SPIN NOW!' : 'Already Spun Today'}
+                  </span>
                 </motion.button>
 
                 {!canSpin && (
-                  <p className="text-center text-xs text-violet-500 mt-2">
+                  <p className="text-center text-xs text-violet-300/70 mt-3 font-medium">
                     Next spin available tomorrow! 🌅
                   </p>
                 )}
