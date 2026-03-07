@@ -1,7 +1,6 @@
 import { motion } from 'motion/react';
 import { Axolotl, FoodItem } from '../types/game';
 import { useEffect, useState } from 'react';
-import axolotlImg from '../../assets/axolotl.png';
 
 interface AxolotlDisplayProps {
   axolotl: Axolotl;
@@ -175,7 +174,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
 
         {/* Axolotl image */}
         <img
-          src={axolotlImg}
+          src="/axolotl.png"
           alt="Axolotl"
           width={size}
           height={size}

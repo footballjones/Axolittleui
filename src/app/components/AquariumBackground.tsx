@@ -1,6 +1,5 @@
 import { motion } from 'motion/react';
 import { getDecorationById } from '../data/decorations';
-import aquariumBg from '../../assets/aquarium-bg.png';
 
 interface AquariumBackgroundProps {
   background: string;
@@ -12,7 +11,7 @@ export function AquariumBackground({ background, decorations }: AquariumBackgrou
     <div className="absolute inset-0 overflow-hidden">
       {/* Base aquarium background image */}
       <img
-        src={aquariumBg}
+        src="/aquarium-bg.png"
         alt="Aquarium background"
         className="absolute inset-0 w-full h-full object-cover"
         style={{ zIndex: 0 }}
