@@ -317,7 +317,18 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
     setFinalRewards(null);
     setIsPlaying(true);
     setIsPaused(false);
-  }, [reset, energy]);
+    
+    // Force initial draw
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (ctx) {
+          draw(ctx);
+        }
+      }
+    }, 0);
+  }, [reset, energy, draw]);
 
   // Start game loop
   useEffect(() => {
@@ -346,6 +357,56 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
         this.closePath();
         return this;
       };
+    }
+  }, []);
+
+  // Initialize game state on mount
+  useEffect(() => {
+    // Initialize base block
+    gameStateRef.current = {
+      stack: [{
+        x: CANVAS_W / 2 - INITIAL_WIDTH / 2,
+        width: INITIAL_WIDTH,
+        y: BASE_Y,
+      }],
+      current: null,
+      fallingPieces: [],
+      cameraY: 0,
+    };
+    
+    // Draw initial state
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (ctx) {
+        // Draw background
+        ctx.fillStyle = '#0e2233';
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        
+        // Draw grid
+        ctx.strokeStyle = 'rgba(100, 200, 255, 0.04)';
+        for (let y = 0; y < CANVAS_H; y += BLOCK_HEIGHT) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(CANVAS_W, y);
+          ctx.stroke();
+        }
+        
+        // Draw base block
+        const b = gameStateRef.current.stack[0];
+        ctx.fillStyle = '#556';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2, 4);
+        } else {
+          ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT - 2);
+        }
+        ctx.fill();
+        
+        // Draw highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(b.x + 2, b.y + 2, b.width - 4, 6);
+      }
     }
   }, []);
 
@@ -540,6 +601,10 @@ export function AxolotlStacker({ onEnd, energy }: MiniGameProps) {
             height: '100%',
             margin: 0,
             padding: 0,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            zIndex: 1,
           }}
           onClick={dropBlock}
           onTouchStart={(e) => {
