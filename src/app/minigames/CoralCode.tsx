@@ -4,7 +4,7 @@
  * Score = 10 - guesses used (higher is better)
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GameWrapper } from './GameWrapper';
 import { MiniGameProps, GameResult } from './types';
@@ -15,16 +15,21 @@ const COLORS = ['🔴', '🟡', '🟢', '🔵', '🟣', '🟠'];
 
 type Difficulty = 'easy' | 'normal' | 'hard';
 
-const DIFFICULTY_CONFIG: Record<Difficulty, { codeLength: number; label: string }> = {
-  easy: { codeLength: 3, label: 'Easy (3 slots)' },
-  normal: { codeLength: 4, label: 'Normal (4 slots)' },
-  hard: { codeLength: 5, label: 'Hard (5 slots)' },
+const DIFFICULTY_CONFIG: Record<Difficulty, { codeLength: number; colorCount: number; label: string }> = {
+  easy: { codeLength: 3, colorCount: 4, label: 'Easy (3 slots)' },
+  normal: { codeLength: 4, colorCount: 5, label: 'Normal (4 slots)' },
+  hard: { codeLength: 5, colorCount: 6, label: 'Hard (5 slots)' },
 };
 
-function generateSecretCode(codeLength: number): string[] {
+function getAvailableColors(difficulty: Difficulty): string[] {
+  const colorCount = DIFFICULTY_CONFIG[difficulty].colorCount;
+  return COLORS.slice(0, colorCount);
+}
+
+function generateSecretCode(codeLength: number, availableColors: string[]): string[] {
   const code: string[] = [];
   for (let i = 0; i < codeLength; i++) {
-    code.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+    code.push(availableColors[Math.floor(Math.random() * availableColors.length)]);
   }
   return code;
 }
@@ -63,6 +68,7 @@ interface Guess {
 export function CoralCode({ onEnd, energy }: MiniGameProps) {
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [codeLength, setCodeLength] = useState<number>(4);
+  const [availableColors, setAvailableColors] = useState<string[]>(COLORS.slice(0, 5));
   const [secretCode, setSecretCode] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState<string[]>([]);
   const [guesses, setGuesses] = useState<Guess[]>([]);
@@ -71,18 +77,29 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
   const [hasEnded, setHasEnded] = useState(false);
   const guessIdRef = useRef<number>(0);
+  const guessesContainerRef = useRef<HTMLDivElement>(null);
 
   const startGame = useCallback((selectedDifficulty: Difficulty) => {
     const config = DIFFICULTY_CONFIG[selectedDifficulty];
+    const colors = getAvailableColors(selectedDifficulty);
     setDifficulty(selectedDifficulty);
     setCodeLength(config.codeLength);
-    setSecretCode(generateSecretCode(config.codeLength));
+    setAvailableColors(colors);
+    setSecretCode(generateSecretCode(config.codeLength, colors));
     setCurrentGuess([]);
     setGuesses([]);
     setIsPlaying(true);
     setHasEnded(false);
+    setSelectedColor(colors[0]);
     guessIdRef.current = 0;
   }, []);
+
+  // Auto-scroll to bottom when new guess is added
+  useEffect(() => {
+    if (guessesContainerRef.current && guesses.length > 0) {
+      guessesContainerRef.current.scrollTop = guessesContainerRef.current.scrollHeight;
+    }
+  }, [guesses.length]);
 
   const addColorToGuess = useCallback((color: string) => {
     setCurrentGuess(prev => {
@@ -208,7 +225,10 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
         </div>
 
         {/* Previous guesses - more space */}
-        <div className="flex-1 overflow-y-auto w-full mb-2 space-y-1.5 pr-1">
+        <div 
+          ref={guessesContainerRef}
+          className="flex-1 overflow-y-auto w-full mb-2 space-y-1.5 pr-1"
+        >
           {guesses.map((guess, index) => {
             const isMostRecent = index === guesses.length - 1;
             return (
@@ -262,8 +282,8 @@ export function CoralCode({ onEnd, energy }: MiniGameProps) {
           </div>
 
           {/* Color picker - compact */}
-          <div className="grid grid-cols-3 gap-1.5 mb-2">
-            {COLORS.map((color) => (
+          <div className={`grid gap-1.5 mb-2 ${availableColors.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {availableColors.map((color) => (
               <motion.button
                 key={color}
                 onClick={() => addColorToGuess(color)}
