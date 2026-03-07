@@ -172,7 +172,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
           />
         </motion.div>
 
-        {/* SVG Axolotl */}
+        {/* Realistic SVG Axolotl */}
         <svg
           width={size}
           height={size}
@@ -182,81 +182,194 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
             filter: 'drop-shadow(0 0 8px rgba(160,120,255,0.4)) drop-shadow(0 0 20px rgba(100,180,255,0.3)) drop-shadow(0 4px 12px rgba(0,0,0,0.25))',
           }}
         >
-          {/* Body */}
-          <ellipse
-            cx="100"
-            cy="120"
-            rx="60"
-            ry="50"
-            fill={axolotl.color || '#FFB5E8'}
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth="2"
-          />
-          
-          {/* Head */}
-          <ellipse
-            cx="100"
-            cy="80"
-            rx="50"
-            ry="45"
-            fill={axolotl.color || '#FFB5E8'}
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth="2"
-          />
-          
-          {/* Gills (left side) */}
-          <g>
-            <ellipse cx="50" cy="85" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-            <ellipse cx="45" cy="95" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-            <ellipse cx="50" cy="105" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-          </g>
-          
-          {/* Gills (right side) */}
-          <g>
-            <ellipse cx="150" cy="85" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-            <ellipse cx="155" cy="95" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-            <ellipse cx="150" cy="105" rx="8" ry="20" fill="rgba(255,200,200,0.6)" />
-          </g>
-          
-          {/* Eyes */}
-          <circle cx="85" cy="75" r="12" fill="white" />
-          <circle cx="115" cy="75" r="12" fill="white" />
-          <circle cx="88" cy="78" r="6" fill="black" />
-          <circle cx="118" cy="78" r="6" fill="black" />
-          
-          {/* Smile */}
+          <defs>
+            {/* Gradient for body */}
+            <linearGradient id={`bodyGrad-${axolotl.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={axolotl.color || '#FFB5E8'} stopOpacity="1" />
+              <stop offset="50%" stopColor={axolotl.color || '#FFB5E8'} stopOpacity="0.95" />
+              <stop offset="100%" stopColor={axolotl.color || '#E8A5D5'} stopOpacity="0.9" />
+            </linearGradient>
+            {/* Shine/highlight */}
+            <linearGradient id={`shine-${axolotl.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.4)" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.2)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Main body - more realistic shape */}
           <path
-            d="M 85 95 Q 100 105 115 95"
-            stroke="rgba(0,0,0,0.3)"
-            strokeWidth="2"
+            d="M 60 140 Q 50 130 45 120 Q 40 110 45 100 Q 50 90 60 85 Q 70 80 85 75 Q 100 70 115 75 Q 130 80 140 85 Q 150 90 155 100 Q 160 110 155 120 Q 150 130 140 140 Q 130 150 120 155 Q 110 160 100 160 Q 90 160 80 155 Q 70 150 60 140 Z"
+            fill={`url(#bodyGrad-${axolotl.id})`}
+            stroke="rgba(255,255,255,0.4)"
+            strokeWidth="1.5"
+          />
+          
+          {/* Head - more defined */}
+          <ellipse
+            cx="100"
+            cy="75"
+            rx="45"
+            ry="40"
+            fill={`url(#bodyGrad-${axolotl.id})`}
+            stroke="rgba(255,255,255,0.4)"
+            strokeWidth="1.5"
+          />
+          
+          {/* External gills - left side (more realistic feathery appearance) */}
+          <g opacity="0.85">
+            {/* Front gill */}
+            <motion.g
+              animate={{ opacity: [0.7, 0.9, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <path
+                d="M 50 80 Q 40 75 35 80 Q 30 85 35 90 Q 40 95 45 95 Q 50 90 50 80"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="38" cy="85" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+            {/* Middle gill */}
+            <motion.g
+              animate={{ opacity: [0.75, 0.95, 0.75] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+            >
+              <path
+                d="M 48 95 Q 38 90 33 95 Q 28 100 33 105 Q 38 110 43 110 Q 48 105 48 95"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="36" cy="100" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+            {/* Back gill */}
+            <motion.g
+              animate={{ opacity: [0.7, 0.9, 0.7] }}
+              transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+            >
+              <path
+                d="M 50 110 Q 40 105 35 110 Q 30 115 35 120 Q 40 125 45 125 Q 50 120 50 110"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="38" cy="115" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+          </g>
+          
+          {/* External gills - right side */}
+          <g opacity="0.85">
+            <motion.g
+              animate={{ opacity: [0.7, 0.9, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+            >
+              <path
+                d="M 150 80 Q 160 75 165 80 Q 170 85 165 90 Q 160 95 155 95 Q 150 90 150 80"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="162" cy="85" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+            <motion.g
+              animate={{ opacity: [0.75, 0.95, 0.75] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+            >
+              <path
+                d="M 152 95 Q 162 90 167 95 Q 172 100 167 105 Q 162 110 157 110 Q 152 105 152 95"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="164" cy="100" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+            <motion.g
+              animate={{ opacity: [0.7, 0.9, 0.7] }}
+              transition={{ duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+            >
+              <path
+                d="M 150 110 Q 160 105 165 110 Q 170 115 165 120 Q 160 125 155 125 Q 150 120 150 110"
+                fill="rgba(255,180,180,0.7)"
+                stroke="rgba(255,200,200,0.5)"
+                strokeWidth="1"
+              />
+              <ellipse cx="162" cy="115" rx="6" ry="12" fill="rgba(255,160,160,0.6)" />
+            </motion.g>
+          </g>
+          
+          {/* Eyes - more realistic with highlights */}
+          <g>
+            {/* Left eye */}
+            <circle cx="85" cy="72" r="11" fill="white" />
+            <circle cx="85" cy="72" r="9" fill="rgba(200,230,255,0.3)" />
+            <circle cx="87" cy="74" r="5.5" fill="black" />
+            <circle cx="88.5" cy="75.5" r="2" fill="white" />
+            {/* Right eye */}
+            <circle cx="115" cy="72" r="11" fill="white" />
+            <circle cx="115" cy="72" r="9" fill="rgba(200,230,255,0.3)" />
+            <circle cx="117" cy="74" r="5.5" fill="black" />
+            <circle cx="118.5" cy="75.5" r="2" fill="white" />
+          </g>
+          
+          {/* Mouth - more defined */}
+          <path
+            d="M 88 90 Q 100 95 112 90"
+            stroke="rgba(0,0,0,0.25)"
+            strokeWidth="1.5"
             fill="none"
             strokeLinecap="round"
           />
           
-          {/* Tail */}
+          {/* Tail - more realistic shape */}
           <ellipse
             cx="100"
             cy="165"
-            rx="35"
-            ry="25"
-            fill={axolotl.color || '#FFB5E8'}
+            rx="32"
+            ry="22"
+            fill={`url(#bodyGrad-${axolotl.id})`}
+            stroke="rgba(255,255,255,0.4)"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M 68 155 Q 65 160 68 165 Q 71 170 75 168 Q 80 165 85 165"
+            fill={`url(#bodyGrad-${axolotl.id})`}
             stroke="rgba(255,255,255,0.3)"
-            strokeWidth="2"
+            strokeWidth="1"
+          />
+          <path
+            d="M 132 155 Q 135 160 132 165 Q 129 170 125 168 Q 120 165 115 165"
+            fill={`url(#bodyGrad-${axolotl.id})`}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="1"
+          />
+          
+          {/* Body shine/highlight */}
+          <ellipse
+            cx="95"
+            cy="100"
+            rx="35"
+            ry="45"
+            fill={`url(#shine-${axolotl.id})`}
+            opacity="0.6"
           />
           
           {/* Pattern overlay (if spotted/striped) */}
           {axolotl.pattern === 'spotted' && (
             <>
-              <circle cx="100" cy="100" r="8" fill="rgba(255,255,255,0.4)" />
-              <circle cx="120" cy="130" r="6" fill="rgba(255,255,255,0.4)" />
-              <circle cx="80" cy="140" r="7" fill="rgba(255,255,255,0.4)" />
+              <circle cx="95" cy="95" r="6" fill="rgba(255,255,255,0.5)" />
+              <circle cx="110" cy="110" r="5" fill="rgba(255,255,255,0.5)" />
+              <circle cx="85" cy="120" r="5.5" fill="rgba(255,255,255,0.5)" />
+              <circle cx="105" cy="130" r="4" fill="rgba(255,255,255,0.4)" />
+              <circle cx="90" cy="105" r="4.5" fill="rgba(255,255,255,0.45)" />
             </>
           )}
           {axolotl.pattern === 'striped' && (
             <>
-              <line x1="70" y1="90" x2="70" y2="150" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
-              <line x1="100" y1="85" x2="100" y2="155" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
-              <line x1="130" y1="90" x2="130" y2="150" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+              <line x1="65" y1="85" x2="65" y2="145" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="100" y1="80" x2="100" y2="150" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="135" y1="85" x2="135" y2="145" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" />
             </>
           )}
         </svg>

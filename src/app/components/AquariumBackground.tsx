@@ -177,9 +177,98 @@ export function AquariumBackground({ background, decorations }: AquariumBackgrou
         />
       ))}
 
-      {/* Bubbles */}
-      {Array.from({ length: 6 }).map((_, i) => {
-        const size = 3 + Math.random() * 5;
+      {/* Animated Kelp/Seaweed in background */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const leftPos = 5 + (i * 7.5) + Math.random() * 3;
+        const height = 25 + Math.random() * 35;
+        const swayDelay = Math.random() * 2;
+        const swayAmount = 3 + Math.random() * 5;
+        return (
+          <motion.div
+            key={`kelp-${i}`}
+            className="absolute bottom-0 pointer-events-none"
+            style={{
+              left: `${leftPos}%`,
+              width: '4%',
+              height: `${height}%`,
+              background: `linear-gradient(180deg, 
+                transparent 0%,
+                rgba(34, 197, 94, 0.15) 10%,
+                rgba(22, 163, 74, 0.35) 30%,
+                rgba(21, 128, 61, 0.5) 60%,
+                rgba(20, 83, 45, 0.6) 100%
+              )`,
+              clipPath: `polygon(
+                ${30 + Math.random() * 20}% 0%,
+                ${70 + Math.random() * 20}% 0%,
+                ${60 + Math.random() * 15}% 25%,
+                ${40 + Math.random() * 15}% 50%,
+                ${55 + Math.random() * 15}% 75%,
+                ${45 + Math.random() * 15}% 100%,
+                50% 100%
+              )`,
+              filter: 'blur(0.5px)',
+              zIndex: 1,
+            }}
+            animate={{
+              x: [0, swayAmount, -swayAmount, 0],
+              rotate: [0, 1.5, -1.5, 0],
+            }}
+            transition={{
+              duration: 4 + Math.random() * 3,
+              delay: swayDelay,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        );
+      })}
+
+      {/* More detailed kelp fronds */}
+      {Array.from({ length: 8 }).map((_, i) => {
+        const leftPos = 8 + (i * 10) + Math.random() * 4;
+        return (
+          <motion.div
+            key={`kelp-frond-${i}`}
+            className="absolute bottom-0 pointer-events-none"
+            style={{
+              left: `${leftPos}%`,
+              width: '3%',
+              height: `${20 + Math.random() * 25}%`,
+              background: `linear-gradient(180deg, 
+                transparent 0%,
+                rgba(34, 197, 94, 0.2) 20%,
+                rgba(22, 163, 74, 0.4) 50%,
+                rgba(21, 128, 61, 0.55) 100%
+              )`,
+              clipPath: `polygon(
+                ${40 + Math.random() * 20}% 0%,
+                ${60 + Math.random() * 20}% 0%,
+                ${50 + Math.random() * 10}% 100%,
+                50% 100%
+              )`,
+              filter: 'blur(0.3px)',
+              zIndex: 1,
+            }}
+            animate={{
+              x: [0, 2 + Math.random() * 3, -(2 + Math.random() * 3), 0],
+              rotate: [0, 0.8, -0.8, 0],
+            }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              delay: Math.random() * 2,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        );
+      })}
+
+      {/* Enhanced Bubbles - many more with varied sizes */}
+      {Array.from({ length: 20 }).map((_, i) => {
+        const size = 2 + Math.random() * 8;
+        const startX = 5 + Math.random() * 90;
+        const startDelay = Math.random() * 8;
         return (
           <motion.div
             key={`bubble-${i}`}
@@ -187,20 +276,61 @@ export function AquariumBackground({ background, decorations }: AquariumBackgrou
             style={{
               width: size,
               height: size,
-              left: `${15 + Math.random() * 70}%`,
-              bottom: '5%',
-              background: `radial-gradient(circle at 35% 35%, rgba(220, 245, 255, 0.6), rgba(150, 210, 240, 0.15))`,
-              border: '0.5px solid rgba(200, 235, 255, 0.3)',
+              left: `${startX}%`,
+              bottom: `${5 + Math.random() * 15}%`,
+              background: `radial-gradient(circle at 30% 30%, 
+                rgba(240, 250, 255, 0.8), 
+                rgba(200, 235, 255, 0.5),
+                rgba(150, 210, 240, 0.2)
+              )`,
+              border: '0.5px solid rgba(220, 245, 255, 0.4)',
+              boxShadow: '0 0 2px rgba(200, 235, 255, 0.3)',
             }}
             animate={{
-              y: [0, -(200 + Math.random() * 200)],
-              x: [0, (Math.random() - 0.5) * 30],
-              opacity: [0, 0.7, 0.5, 0],
-              scale: [0.5, 1, 1.1, 0.8],
+              y: [0, -(250 + Math.random() * 300)],
+              x: [0, (Math.random() - 0.5) * 40],
+              opacity: [0, 0.8, 0.7, 0.4, 0],
+              scale: [0.3, 0.8, 1, 1.2, 0.9],
+            }}
+            transition={{
+              duration: 8 + Math.random() * 7,
+              delay: startDelay,
+              repeat: Infinity,
+              ease: 'easeOut',
+            }}
+          />
+        );
+      })}
+
+      {/* Small bubble clusters */}
+      {Array.from({ length: 15 }).map((_, i) => {
+        const size = 1 + Math.random() * 3;
+        const startX = 3 + Math.random() * 94;
+        const startDelay = Math.random() * 6;
+        return (
+          <motion.div
+            key={`small-bubble-${i}`}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: size,
+              height: size,
+              left: `${startX}%`,
+              bottom: `${8 + Math.random() * 20}%`,
+              background: `radial-gradient(circle at 35% 35%, 
+                rgba(230, 245, 255, 0.7), 
+                rgba(180, 220, 250, 0.3)
+              )`,
+              border: '0.3px solid rgba(200, 235, 255, 0.5)',
+            }}
+            animate={{
+              y: [0, -(180 + Math.random() * 220)],
+              x: [0, (Math.random() - 0.5) * 25],
+              opacity: [0, 0.6, 0.5, 0],
+              scale: [0.4, 0.9, 1, 0.7],
             }}
             transition={{
               duration: 6 + Math.random() * 5,
-              delay: i * 1.5 + Math.random() * 3,
+              delay: startDelay,
               repeat: Infinity,
               ease: 'easeOut',
             }}
