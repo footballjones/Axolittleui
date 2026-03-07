@@ -16,7 +16,7 @@ interface GameTileProps {
   expandedId: string | null;
   onToggleInfo: (id: string) => void;
   onSelectGame: (id: string) => void;
-  energy: number;
+  energy?: number;
 }
 
 function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSelectGame, energy = 0 }: GameTileProps) {

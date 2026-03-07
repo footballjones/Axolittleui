@@ -313,7 +313,7 @@ export default function App() {
 
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center p-0 sm:p-4">
-      <div className="w-full h-full sm:h-[calc(100vh-2rem)] max-w-md flex flex-col min-h-0">
+      <div className="w-full h-full sm:max-h-[calc(100vh-2rem)] sm:h-auto max-w-md flex flex-col min-h-0" style={{ height: '100%', maxHeight: '100vh' }}>
         {/* Game Container */}
         <div className="relative flex-1 flex flex-col min-h-0">
           {/* Subtle glow effect */}
