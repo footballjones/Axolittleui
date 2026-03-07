@@ -922,21 +922,18 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            {/* Spacer for absolutely positioned header */}
-            <div style={{ height: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)', flexShrink: 0, minHeight: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5.5rem)' }} />
-            
             {/* Content Area - Changes based on currentScreen */}
-            <div className="flex-1 min-h-0 flex flex-col relative z-20" style={{ 
-              minHeight: 0, 
-              overflow: 'visible', 
-              position: 'relative',
-              flex: '1 1 auto',
-              height: '100%',
+            {/* Positioned to start from top, header overlays on top */}
+            <div className="absolute inset-0 flex flex-col relative z-20" style={{ 
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
             }}>
             {currentScreen === 'home' ? (
               <>
-                {/* Aquarium Display - Horizontally Scrollable, extends to bottom */}
-                <div className="relative flex-1 sm:rounded-[2rem] overflow-hidden" style={{ minHeight: 0, height: '100%', width: '100%', position: 'relative' }}>
+                {/* Aquarium Display - Horizontally Scrollable, extends to bottom and top */}
+                <div className="relative flex-1 overflow-hidden" style={{ minHeight: 0, height: '100%', width: '100%', position: 'relative', top: 0 }}>
                   <div 
                     ref={aquariumScrollRef}
                     className="absolute inset-0 overflow-x-auto overflow-y-hidden"
