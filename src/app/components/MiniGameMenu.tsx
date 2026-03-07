@@ -36,13 +36,13 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
       <button
         onClick={() => hasEnergy && onSelectGame(game.id)}
         disabled={!hasEnergy}
-        className={`w-full p-3 text-left group transition-colors ${hasEnergy ? 'active:bg-white/20 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+        className={`w-full p-2.5 text-left group transition-colors ${hasEnergy ? 'active:bg-white/20 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
       >
-        <div className="flex flex-col items-center text-center gap-1.5">
-          <div className={`bg-gradient-to-br ${game.color} rounded-xl w-11 h-11 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
+        <div className="flex flex-col items-center text-center gap-1">
+          <div className={`bg-gradient-to-br ${game.color} rounded-xl w-9 h-9 flex items-center justify-center transition-transform shadow-lg ring-1 ring-white/30`}>
             {game.id === 'fish-hooks' ? (
               <motion.span
-                className="text-xl leading-none inline-block"
+                className="text-lg leading-none inline-block"
                 style={{ transformOrigin: 'top center' }}
                 animate={{ rotate: [-20, 20, -20] }}
                 transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -51,7 +51,7 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
               </motion.span>
             ) : game.id === 'keepey-upey' ? (
               <motion.span
-                className="text-xl leading-none inline-block"
+                className="text-lg leading-none inline-block"
                 animate={{ x: [-5, 4, -3, 6, -5], y: [-4, 5, -6, 2, -4] }}
                 transition={{
                   x: { duration: 9, repeat: Infinity, ease: 'easeInOut' },
@@ -61,24 +61,24 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
                 {game.emoji}
               </motion.span>
             ) : (
-              <span className="text-xl leading-none">{game.emoji}</span>
+              <span className="text-lg leading-none">{game.emoji}</span>
             )}
           </div>
-          <h4 className="font-bold text-slate-800 text-sm leading-tight">{game.name}</h4>
+          <h4 className="font-bold text-slate-800 text-xs leading-tight">{game.name}</h4>
         </div>
       </button>
 
       {/* Info button underneath title */}
-      <div className="flex justify-center pb-0 -mt-3">
+      <div className="flex justify-center pb-0 -mt-2">
         <motion.button
           onClick={(e) => {
             e.stopPropagation();
             onToggleInfo(game.id);
           }}
-          className="w-5 h-5 flex items-center justify-center"
+          className="w-4 h-4 flex items-center justify-center"
           whileTap={{ scale: 0.9 }}
         >
-          <Info className="w-3 h-3 text-purple-400" strokeWidth={2.5} />
+          <Info className="w-2.5 h-2.5 text-purple-400" strokeWidth={2.5} />
         </motion.button>
       </div>
 
@@ -237,7 +237,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
           <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-violet-100 drop-shadow-sm">Solo Games</h3>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {soloGames.map((game, index) => (
             <GameTile
               key={game.id}
@@ -261,7 +261,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
           <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-rose-100 drop-shadow-sm">Multiplayer Games</h3>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {multiplayerGames.map((game, index) => (
             <GameTile
               key={game.id}
