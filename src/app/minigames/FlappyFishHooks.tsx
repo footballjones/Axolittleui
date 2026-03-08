@@ -114,8 +114,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bBottom = by + bs;
 
     // Limit hooks to prevent memory issues
-    if (hooks.length > 12) {
-      hooks.splice(0, hooks.length - 12);
+    if (hooks.length > 10) {
+      hooks.splice(0, hooks.length - 10);
     }
     
     // Draw hooks - batch operations
@@ -144,9 +144,9 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           game.score += 1;
-          // Update score state only every 3 points or every 1 second
+          // Update score state only every 5 points or every 2 seconds (minimize React re-renders)
           const timeSinceUpdate = now - game.lastScoreUpdate;
-          if (game.score % 3 === 0 || timeSinceUpdate > 1000) {
+          if (game.score % 5 === 0 || timeSinceUpdate > 2000) {
             setScore(game.score);
             game.lastScoreUpdate = now;
           }
