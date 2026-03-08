@@ -10,8 +10,14 @@ interface AxolotlDisplayProps {
 }
 
 export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: AxolotlDisplayProps) {
+  // Start in center column (center third: 33-66%, so 50% is perfect)
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [facingLeft, setFacingLeft] = useState(false);
+
+  // Reset to center column when component mounts (returning to aquarium screen)
+  useEffect(() => {
+    setPosition({ x: 50, y: 50 });
+  }, []); // Empty dependency array - only on mount
 
   // Handle click target - move axolotl to clicked position
   useEffect(() => {

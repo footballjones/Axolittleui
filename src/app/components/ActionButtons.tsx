@@ -99,19 +99,20 @@ export function ActionButtons({
             >
               {/* Fill level - rises from bottom */}
               <motion.div
-                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${fillColor} rounded-b-xl`}
+                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${fillColor} rounded-b-xl pointer-events-none`}
                 initial={{ height: 0 }}
                 animate={{ height: `${value}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
                 style={{
                   boxShadow: `0 -4px 12px ${glowColor}`,
+                  zIndex: 1,
                 }}
               />
 
               {/* Shimmer on the fill */}
               <motion.div
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white/0 via-white/25 to-white/0 pointer-events-none"
-                style={{ height: `${value}%` }}
+                style={{ height: `${value}%`, zIndex: 2 }}
                 animate={{ opacity: [0.3, 0.6, 0.3] }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
