@@ -144,11 +144,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           game.score += 1;
-          // Update score display directly via DOM - NO React state updates during gameplay
-          const scoreEl = document.querySelector('[data-fish-hooks-score]');
-          if (scoreEl) {
-            scoreEl.textContent = `Score: ${game.score}`;
-          }
+          // NO score updates during gameplay - eliminates all re-renders and DOM updates
         }
 
         // Collision - only check nearby hooks
@@ -304,12 +300,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setGameEnded(false);
     setFinalRewards(null);
     
-    // Update score display directly
-    const scoreEl = document.querySelector('[data-fish-hooks-score]');
-    if (scoreEl) {
-      scoreEl.textContent = 'Score: 0';
-    }
-    
     // Draw initial frame
     const ctx = game.ctx;
     if (ctx) {
@@ -330,7 +320,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   return (
     <GameWrapper
       gameName="Fish Hooks"
-      score={score}
+      score={gameRef.current.isPlaying ? gameRef.current.score : score}
       onEnd={onEnd}
       energy={energy}
       onPause={handlePause}
