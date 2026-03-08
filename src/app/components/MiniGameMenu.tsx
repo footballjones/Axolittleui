@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Users, ArrowLeft, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GAME_CONFIG } from '../config/game';
@@ -117,6 +117,7 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
 export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10, lastEnergyUpdate }: MiniGameMenuProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [energyTimeText, setEnergyTimeText] = useState<string>('');
+  const initialCalculationRef = useRef<{ baseTime: number; targetEnergy: number; secondsUntilNext: number } | null>(null);
 
   const toggleInfo = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -126,74 +127,98 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
 
   // Calculate time until next energy - updates live, always visible
   useEffect(() => {
-    const updateTimer = () => {
-      if (energy >= maxEnergy) {
-        setEnergyTimeText('Energy is full!');
-        return;
-      }
-
-      if (!lastEnergyUpdate) {
-        setEnergyTimeText('Calculating...');
-        return;
-      }
-
-      const now = Date.now();
+    // Reset calculation when energy or lastEnergyUpdate changes significantly
+    const now = Date.now();
+    const shouldRecalculate = !initialCalculationRef.current || 
+      initialCalculationRef.current.targetEnergy !== energy ||
+      (lastEnergyUpdate && Math.abs(now - (initialCalculationRef.current.baseTime + initialCalculationRef.current.secondsUntilNext * 1000)) > 10000);
+    
+    if (shouldRecalculate && lastEnergyUpdate) {
       const elapsedSinceLastUpdate = Math.max(0, (now - lastEnergyUpdate) / 1000);
-      
-      const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
+      const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
       const currentEnergy = energy || 0;
-      
-      // Calculate actual fractional energy
-      // Since energy is floored in storage, we need to calculate the fractional part
-      // based on time elapsed since lastEnergyUpdate
-      // lastEnergyUpdate represents when energy was last "snapped" to an integer
       const energyGained = energyRegenRate * elapsedSinceLastUpdate;
       const fractionalEnergy = currentEnergy + energyGained;
       
-      // Cap at max energy
       if (fractionalEnergy >= maxEnergy) {
+        initialCalculationRef.current = null;
         setEnergyTimeText('Energy is full!');
         return;
       }
       
-      // Calculate how much energy is needed until next full point
       const currentFloor = Math.floor(fractionalEnergy);
       const nextFullPoint = currentFloor + 1;
-      
-      // If we're already at or past the next point, check if we're at max
-      if (fractionalEnergy >= nextFullPoint - 0.0001) {
-        if (fractionalEnergy >= maxEnergy) {
-          setEnergyTimeText('Energy is full!');
-        } else {
-          // Very close to next point, show 0s
-          setEnergyTimeText('0s until next energy');
-        }
-        return;
-      }
-      
       const energyNeeded = nextFullPoint - fractionalEnergy;
-      
-      // Calculate seconds needed: energyNeeded / (energy per second)
       const secondsUntilNext = energyNeeded / energyRegenRate;
       
-      // Ensure we don't show negative time
-      if (secondsUntilNext <= 0) {
+      if (secondsUntilNext > 0 && secondsUntilNext <= 3600) {
+        initialCalculationRef.current = {
+          baseTime: now,
+          targetEnergy: energy,
+          secondsUntilNext: secondsUntilNext
+        };
+      }
+    }
+
+    const updateTimer = () => {
+      if (energy >= maxEnergy) {
         setEnergyTimeText('Energy is full!');
+        initialCalculationRef.current = null;
         return;
       }
-      
-      // Use floor to show time that has definitely not passed yet
-      // This prevents the timer from jumping backwards
-      const totalSeconds = Math.floor(secondsUntilNext);
-      
-      // Cap at 1 hour max (3600 seconds)
-      if (totalSeconds >= 3600) {
-        setEnergyTimeText(`60m 0s until next energy`);
-        return;
+
+      if (!initialCalculationRef.current) {
+        if (!lastEnergyUpdate) {
+          setEnergyTimeText('Calculating...');
+          return;
+        }
+        // Recalculate if we don't have a stored calculation
+        const now = Date.now();
+        const elapsedSinceLastUpdate = Math.max(0, (now - lastEnergyUpdate) / 1000);
+        const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600;
+        const currentEnergy = energy || 0;
+        const energyGained = energyRegenRate * elapsedSinceLastUpdate;
+        const fractionalEnergy = currentEnergy + energyGained;
+        
+        if (fractionalEnergy >= maxEnergy) {
+          setEnergyTimeText('Energy is full!');
+          return;
+        }
+        
+        const currentFloor = Math.floor(fractionalEnergy);
+        const nextFullPoint = currentFloor + 1;
+        const energyNeeded = nextFullPoint - fractionalEnergy;
+        const secondsUntilNext = energyNeeded / energyRegenRate;
+        
+        if (secondsUntilNext > 0 && secondsUntilNext <= 3600) {
+          initialCalculationRef.current = {
+            baseTime: now,
+            targetEnergy: energy,
+            secondsUntilNext: secondsUntilNext
+          };
+        } else if (secondsUntilNext > 3600) {
+          setEnergyTimeText('60m 0s until next energy');
+          return;
+        } else {
+          setEnergyTimeText('Energy is full!');
+          return;
+        }
       }
+
+      // Calculate remaining time based on stored calculation
+      const elapsed = (Date.now() - initialCalculationRef.current.baseTime) / 1000;
+      const remainingSeconds = Math.max(0, initialCalculationRef.current.secondsUntilNext - elapsed);
+      const totalSeconds = Math.floor(remainingSeconds);
       
       if (totalSeconds <= 0) {
-        setEnergyTimeText('Energy is full!');
+        // Time reached, recalculate for next energy point
+        initialCalculationRef.current = null;
+        updateTimer(); // Recursive call to recalculate
+        return;
+      }
+      
+      if (totalSeconds >= 3600) {
+        setEnergyTimeText('60m 0s until next energy');
         return;
       }
 
