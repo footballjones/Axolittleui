@@ -73,28 +73,36 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const hooks = g.hooks;
     const now = performance.now();
 
+    // Progressive difficulty based on score
+    const difficulty = Math.min(1.0, g.score / 30); // Max difficulty at score 30
+    const gravity = GRAVITY_BASE * (1 + difficulty * 0.4); // +40% max
+    const hookSpeed = HOOK_SPEED_BASE * (1 + difficulty * 0.5); // +50% max
+    const hookGap = HOOK_GAP_BASE * (1 - difficulty * 0.3); // -30% max (smaller gaps)
+    const hookInterval = HOOK_INTERVAL_BASE * (1 - difficulty * 0.25); // -25% max (faster spawns)
+
     // Clear - single operation
     ctx.fillStyle = '#1a3a4a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Bird physics
-    bird.vy += GRAVITY;
+    // Bird physics - progressive gravity
+    bird.vy += gravity;
     bird.y += bird.vy;
 
-    // Spawn hooks - simplified logic
-    if (now - g.lastHookTime > HOOK_INTERVAL) {
+    // Spawn hooks - progressive difficulty
+    if (now - g.lastHookTime > hookInterval) {
       const lastHook = hooks[hooks.length - 1];
       if (!lastHook || lastHook.x < CANVAS_W - 200) {
-        // Simple random gap - no complex distance calculations
+        // Simple random gap
         const gapY = 80 + Math.random() * (CANVAS_H - 200);
         // Reuse hook object if available
         let hook = hooks.find(h => h.x < -100);
         if (hook) {
           hook.x = CANVAS_W;
           hook.gapY = gapY;
+          hook.gap = hookGap;
           hook.scored = false;
         } else {
-          hooks.push({ x: CANVAS_W, gapY, gap: HOOK_GAP, width: HOOK_WIDTH, scored: false });
+          hooks.push({ x: CANVAS_W, gapY, gap: hookGap, width: HOOK_WIDTH_BASE, scored: false });
         }
         g.lastHookTime = now;
       }
@@ -116,7 +124,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const maxProcess = Math.min(3, hooks.length);
     for (let i = 0; i < maxProcess; i++) {
       const h = hooks[i];
-      h.x -= HOOK_SPEED;
+      h.x -= hookSpeed; // Progressive speed
 
       // Skip off-screen
       if (h.x + h.width < -10 || h.x > CANVAS_W) {
