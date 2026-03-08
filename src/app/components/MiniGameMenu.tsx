@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Users, ArrowLeft, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GAME_CONFIG } from '../config/game';
@@ -117,6 +117,7 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
 export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10, lastEnergyUpdate }: MiniGameMenuProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showEnergyInfo, setShowEnergyInfo] = useState(false);
+  const [energyTimeText, setEnergyTimeText] = useState<string>('');
 
   const toggleInfo = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -124,42 +125,69 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
 
   const energyPercent = (energy / maxEnergy) * 100;
 
-  // Calculate time until next energy
-  const getTimeUntilNextEnergy = (): string => {
-    if (energy >= maxEnergy) {
-      return 'Energy is full!';
+  // Calculate time until next energy - updates live
+  useEffect(() => {
+    if (!showEnergyInfo) {
+      setEnergyTimeText('');
+      return;
     }
 
-    if (!lastEnergyUpdate) {
-      return 'Calculating...';
-    }
+    const updateTimer = () => {
+      if (energy >= maxEnergy) {
+        setEnergyTimeText('Energy is full!');
+        return;
+      }
 
-    const now = Date.now();
-    const elapsedSeconds = (now - lastEnergyUpdate) / 1000;
-    const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
-    const currentEnergy = energy || 0;
-    const energyGained = energyRegenRate * elapsedSeconds;
-    const fractionalEnergy = currentEnergy + energyGained;
-    
-    // Calculate how much energy is needed until next full point
-    // If fractionalEnergy is 5.3, we need 0.7 more to reach 6
-    const fractionalPart = fractionalEnergy % 1;
-    const energyNeeded = 1 - fractionalPart;
-    const secondsUntilNext = energyNeeded / energyRegenRate;
-    
-    if (secondsUntilNext <= 0 || fractionalEnergy >= maxEnergy) {
-      return 'Energy is full!';
-    }
+      if (!lastEnergyUpdate) {
+        setEnergyTimeText('Calculating...');
+        return;
+      }
 
-    const minutes = Math.floor(secondsUntilNext / 60);
-    const seconds = Math.floor(secondsUntilNext % 60);
-    
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s until next energy`;
-    } else {
-      return `${seconds}s until next energy`;
-    }
-  };
+      const now = Date.now();
+      const elapsedSeconds = (now - lastEnergyUpdate) / 1000;
+      const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
+      const currentEnergy = energy || 0;
+      const energyGained = energyRegenRate * elapsedSeconds;
+      const fractionalEnergy = currentEnergy + energyGained;
+      
+      // Cap at max energy
+      if (fractionalEnergy >= maxEnergy) {
+        setEnergyTimeText('Energy is full!');
+        return;
+      }
+      
+      // Calculate how much energy is needed until next full point
+      // If we're at 5.3, we need 0.7 more to reach 6
+      const nextFullPoint = Math.ceil(fractionalEnergy);
+      const energyNeeded = nextFullPoint - fractionalEnergy;
+      const secondsUntilNext = energyNeeded / energyRegenRate;
+      
+      // Round to nearest second to avoid floating point issues
+      const totalSeconds = Math.round(secondsUntilNext);
+      
+      if (totalSeconds <= 0) {
+        setEnergyTimeText('Energy is full!');
+        return;
+      }
+
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      
+      if (minutes > 0) {
+        setEnergyTimeText(`${minutes}m ${seconds}s until next energy`);
+      } else {
+        setEnergyTimeText(`${seconds}s until next energy`);
+      }
+    };
+
+    // Update immediately
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [showEnergyInfo, energy, maxEnergy, lastEnergyUpdate]);
 
   const soloGames = [
     {
@@ -278,7 +306,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
               className="absolute top-full left-0 right-0 mt-2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-2 text-center z-50"
             >
               <p className="text-xs text-white font-medium">
-                {getTimeUntilNextEnergy()}
+                {energyTimeText || 'Calculating...'}
               </p>
             </motion.div>
           )}
