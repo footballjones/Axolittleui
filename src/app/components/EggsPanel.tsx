@@ -526,14 +526,15 @@ function EggSlot({ slotIndex, egg, onSelect, isIncubator = false }: { slotIndex:
   if (!egg) {
     return (
       <div
-        className={`${slotSize} rounded-2xl flex flex-col items-center justify-center gap-1 opacity-40`}
+        className={`${slotSize} rounded-2xl flex flex-col items-center justify-center gap-1.5`}
         style={{
-          background: 'rgba(255,255,255,0.35)',
-          border: '1.5px dashed rgba(168,85,247,0.25)',
+          background: 'rgba(255,255,255,0.65)',
+          border: '1.5px dashed rgba(168,85,247,0.5)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)',
         }}
       >
-        <span className={`${isIncubator ? 'text-[2rem]' : 'text-[1.4rem]'} grayscale opacity-50`}>🥚</span>
-        <span className="text-[8px] text-violet-400/60 font-bold tracking-wider uppercase">Empty</span>
+        <span className={`${isIncubator ? 'text-[2rem]' : 'text-[1.4rem]'} opacity-70`}>🥚</span>
+        <span className="text-[9px] text-violet-600/80 font-bold tracking-wider uppercase">Empty</span>
       </div>
     );
   }
@@ -606,25 +607,25 @@ function EggSlot({ slotIndex, egg, onSelect, isIncubator = false }: { slotIndex:
 function LockedSlot({ onUnlock }: { onUnlock: () => void }) {
   return (
     <motion.button
-      className="relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 overflow-hidden opacity-40"
+      className="relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-1.5 overflow-hidden"
       style={{
-        background: 'rgba(255,255,255,0.35)',
-        border: '1.5px dashed rgba(139,92,246,0.25)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        background: 'rgba(255,255,255,0.65)',
+        border: '1.5px dashed rgba(139,92,246,0.5)',
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)',
       }}
       whileTap={{ scale: 0.91 }}
       onClick={onUnlock}
     >
       {/* Slot gloss */}
-      <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl pointer-events-none" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%)' }} />
+      <div className="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl pointer-events-none" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%)' }} />
 
       {/* Lock icon */}
-      <Lock className="w-5 h-5 text-violet-400/70" strokeWidth={2.5} />
+      <Lock className="w-5 h-5 text-violet-500/80" strokeWidth={2.5} />
 
       {/* Price pill */}
       <span
-        className="text-[7.5px] font-black text-violet-700 tracking-wide z-10 px-2 py-0.5 rounded-full"
-        style={{ background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(168,85,247,0.3)' }}
+        className="text-[8px] font-black text-violet-700/90 tracking-wide z-10 px-2 py-0.5 rounded-full"
+        style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(168,85,247,0.4)' }}
       >
         10 🪬 unlock
       </span>
