@@ -1,6 +1,6 @@
 /**
  * Flappy Fish Hooks - Simple Flappy Bird clone
- * Ultra-simple implementation for maximum performance
+ * Maximum simplicity for mobile performance
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -43,6 +43,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird: { x: number; y: number; vy: number; size: number };
     hooks: Hook[];
     lastHookTime: number;
+    frameId: number | null;
   }>({
     ctx: null,
     running: false,
@@ -52,19 +53,25 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird: { x: 80, y: CANVAS_H / 2, vy: 0, size: 22 },
     hooks: [],
     lastHookTime: 0,
+    frameId: null,
   });
 
-  // Simple game loop - no callbacks, no dependencies
-  const loop = () => {
+  // Ultra-simple game loop - stored in ref to prevent recreation
+  const gameLoopRef = useRef<() => void>();
+  
+  gameLoopRef.current = () => {
     const g = gameRef.current;
-    if (!g.running || g.paused || !g.ctx) return;
+    if (!g.running || g.paused || !g.ctx) {
+      g.frameId = null;
+      return;
+    }
 
     const ctx = g.ctx;
     const bird = g.bird;
     const hooks = g.hooks;
     const now = performance.now();
 
-    // Clear
+    // Clear - single operation
     ctx.fillStyle = '#1a3a4a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
@@ -90,7 +97,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       }
     }
 
-    // Process hooks
+    // Process hooks - minimal operations
     const bx = bird.x;
     const by = bird.y;
     const bs = bird.size;
@@ -99,9 +106,9 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bTop = by - bs;
     const bBottom = by + bs;
 
-    // Limit hooks
-    if (hooks.length > 8) {
-      hooks.splice(0, hooks.length - 8);
+    // Keep only 6 hooks max
+    if (hooks.length > 6) {
+      hooks.shift();
     }
     
     ctx.fillStyle = '#666';
@@ -119,39 +126,43 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         const top = h.gapY - h.gap / 2;
         const bottom = h.gapY + h.gap / 2;
         
+        // Draw - minimal operations
         ctx.fillRect(h.x, 0, h.width, top);
         ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
 
+        // Score
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           g.score += 1;
         }
 
-        if (h.x < bRight + 40 && h.x + h.width > bLeft - 40) {
-          if (bRight > h.x && bLeft < h.x + h.width) {
-            if (bTop < top || bBottom > bottom) {
-              g.running = false;
-              setScore(g.score);
-              const rewards = g.hadEnergy 
-                ? calculateRewards('fish-hooks', g.score)
-                : { tier: 'normal', xp: 0, coins: 0, opals: undefined };
-              setFinalRewards({
-                tier: rewards.tier,
-                xp: rewards.xp,
-                coins: rewards.coins,
-                opals: rewards.opals,
-              });
-              setGameEnded(true);
-              setShowOverlay(true);
-              return;
-            }
+        // Collision - simplified check
+        if (h.x < bRight + 30 && h.x + h.width > bLeft - 30) {
+          if (bRight > h.x && bLeft < h.x + h.width && (bTop < top || bBottom > bottom)) {
+            g.running = false;
+            g.frameId = null;
+            setScore(g.score);
+            const rewards = g.hadEnergy 
+              ? calculateRewards('fish-hooks', g.score)
+              : { tier: 'normal', xp: 0, coins: 0, opals: undefined };
+            setFinalRewards({
+              tier: rewards.tier,
+              xp: rewards.xp,
+              coins: rewards.coins,
+              opals: rewards.opals,
+            });
+            setGameEnded(true);
+            setShowOverlay(true);
+            return;
           }
         }
       }
     }
 
+    // Boundary check
     if (bBottom > CANVAS_H || bTop < 0) {
       g.running = false;
+      g.frameId = null;
       setScore(g.score);
       const rewards = g.hadEnergy 
         ? calculateRewards('fish-hooks', g.score)
@@ -167,41 +178,28 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Draw bird
+    // Draw bird - ultra-simple (just circle, no details)
     ctx.fillStyle = '#E8A0BF';
     ctx.beginPath();
     ctx.arc(bx, by, bs, 0, Math.PI * 2);
     ctx.fill();
 
+    // Minimal eyes
     ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(bx + 6, by - 5, 3, 0, Math.PI * 2);
-    ctx.arc(bx + 6, by + 5, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(bx + 3, by - 5, 6, 3);
+    ctx.fillRect(bx + 3, by + 2, 6, 3);
 
-    ctx.strokeStyle = '#D48BA8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(bx - bs + 2, by - 12);
-    ctx.lineTo(bx - bs - 8, by - 10);
-    ctx.moveTo(bx - bs + 2, by + 12);
-    ctx.lineTo(bx - bs - 8, by + 10);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(bx + 10, by, 5, -0.3, Math.PI * 0.3);
-    ctx.stroke();
-
-    // Score on canvas
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.font = 'bold 16px sans-serif';
+    // Score
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`Score: ${g.score}`, CANVAS_W - 10, 30);
+    ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
 
+    // Continue loop
     if (g.running && !g.paused) {
-      requestAnimationFrame(loop);
+      g.frameId = requestAnimationFrame(gameLoopRef.current!);
+    } else {
+      g.frameId = null;
     }
   };
 
@@ -231,15 +229,27 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     return () => {
       canvas.removeEventListener('touchstart', handleTap);
       canvas.removeEventListener('click', handleTap);
+      if (gameRef.current.frameId) {
+        cancelAnimationFrame(gameRef.current.frameId);
+      }
     };
   }, []);
 
   // Start/stop loop
   useEffect(() => {
     const g = gameRef.current;
-    if (g.running && !g.paused && g.ctx && !showOverlay) {
-      loop();
+    if (g.running && !g.paused && g.ctx && !showOverlay && !g.frameId) {
+      g.frameId = requestAnimationFrame(gameLoopRef.current!);
+    } else if ((!g.running || g.paused || showOverlay) && g.frameId) {
+      cancelAnimationFrame(g.frameId);
+      g.frameId = null;
     }
+    return () => {
+      if (g.frameId) {
+        cancelAnimationFrame(g.frameId);
+        g.frameId = null;
+      }
+    };
   }, [showOverlay, gameEnded]);
 
   const startGame = () => {
@@ -257,17 +267,19 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setGameEnded(false);
     setFinalRewards(null);
     
-    if (g.ctx) {
-      g.ctx.fillStyle = '#1a3a4a';
-      g.ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      loop();
+    if (g.ctx && !g.frameId) {
+      g.frameId = requestAnimationFrame(gameLoopRef.current!);
     }
   };
 
   const handlePause = () => {
-    gameRef.current.paused = !gameRef.current.paused;
-    if (gameRef.current.running && !gameRef.current.paused && gameRef.current.ctx) {
-      loop();
+    const g = gameRef.current;
+    g.paused = !g.paused;
+    if (g.running && !g.paused && g.ctx && !g.frameId) {
+      g.frameId = requestAnimationFrame(gameLoopRef.current!);
+    } else if (g.paused && g.frameId) {
+      cancelAnimationFrame(g.frameId);
+      g.frameId = null;
     }
   };
 
