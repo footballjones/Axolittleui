@@ -103,14 +103,17 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
     // The wheel rotates clockwise (positive rotation)
     // We want: sectionCenterAngle + rotation = 0 (mod 360) to align with pointer
     // So: rotation = 360 - sectionCenterAngle (mod 360)
-    // Add multiple full spins for effect (4-6 spins)
-    const fullSpins = 4 + Math.random() * 2; // 4-6 full rotations
+    // Add multiple full spins for effect (5-8 spins for more dramatic effect)
+    const fullSpins = 5 + Math.random() * 3; // 5-8 full rotations
     // Calculate final rotation: full spins + adjustment to align section center with pointer
-    const finalRotation = fullSpins * 360 + (360 - sectionCenterAngle);
+    // Use relative rotation from current position for smooth animation
+    const currentRotation = rotation % 360;
+    const targetRotation = (360 - sectionCenterAngle) % 360;
+    const rotationDiff = targetRotation - currentRotation;
+    const finalRotation = rotation + fullSpins * 360 + (rotationDiff < 0 ? rotationDiff + 360 : rotationDiff);
     
     // Store the expected reward for verification
     const expectedReward = { type: reward.type, amount: reward.value };
-    
     
     setRotation(finalRotation);
 
@@ -224,12 +227,18 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                     {/* Spinning wheel */}
                     <motion.div
                       className="w-full h-full"
-                      animate={{ rotate: rotation }}
-                      transition={{ 
-                        duration: 4, 
-                        ease: [0.25, 0.1, 0.25, 1],
+                      animate={{ 
+                        rotate: rotation,
                       }}
-                      style={{ transformOrigin: 'center' }}
+                      transition={{ 
+                        duration: 4,
+                        ease: [0.43, 0.13, 0.23, 0.96], // Custom easing: fast start, slow end (ease-out-cubic)
+                      }}
+                      style={{ 
+                        transformOrigin: 'center',
+                        filter: isSpinning ? 'blur(3px)' : 'blur(0px)',
+                        transition: 'filter 0.3s ease-out',
+                      }}
                     >
                       {/* SVG wheel for precise rendering - rotated so first section starts at top */}
                       <svg width="100%" height="100%" viewBox="0 0 300 300" style={{ transform: 'rotate(-90deg)' }}>
