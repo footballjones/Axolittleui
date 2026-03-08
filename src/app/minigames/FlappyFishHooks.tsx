@@ -195,8 +195,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
     }
 
-    // Continue loop
-    if (g.running && !g.paused) {
+    // Continue loop - self-managing, no React
+    if (g.running && !g.paused && g.ctx) {
       g.frameId = requestAnimationFrame(gameLoopRef.current!);
     } else {
       g.frameId = null;
@@ -235,32 +235,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     };
   }, []);
 
-  // Start/stop loop - use ref to avoid dependency issues
-  const startLoopRef = useRef(false);
-  startLoopRef.current = gameRef.current.running && !gameRef.current.paused && !showOverlay && !gameEnded;
-  
-  useEffect(() => {
-    const g = gameRef.current;
-    const checkLoop = () => {
-      if (startLoopRef.current && g.ctx && !g.frameId) {
-        g.frameId = requestAnimationFrame(gameLoopRef.current!);
-      } else if (!startLoopRef.current && g.frameId) {
-        cancelAnimationFrame(g.frameId);
-        g.frameId = null;
-      }
-    };
-    
-    checkLoop();
-    const interval = setInterval(checkLoop, 100); // Check every 100ms instead of on every render
-    
-    return () => {
-      clearInterval(interval);
-      if (g.frameId) {
-        cancelAnimationFrame(g.frameId);
-        g.frameId = null;
-      }
-    };
-  }, []); // Empty deps - loop manages itself
+  // Game loop manages itself - no React dependencies
+  // Loop will check its own state and continue/stop accordingly
 
   const startGame = () => {
     const g = gameRef.current;
