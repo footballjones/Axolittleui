@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { User, Users, ArrowLeft, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GAME_CONFIG } from '../config/game';
 
 interface MiniGameMenuProps {
   onClose?: () => void;
   onSelectGame: (gameId: string) => void;
   energy?: number;
   maxEnergy?: number;
+  lastEnergyUpdate?: number;
 }
 
 interface GameTileProps {
@@ -112,14 +114,52 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
   );
 }
 
-export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10 }: MiniGameMenuProps) {
+export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10, lastEnergyUpdate }: MiniGameMenuProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showEnergyInfo, setShowEnergyInfo] = useState(false);
 
   const toggleInfo = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
   const energyPercent = (energy / maxEnergy) * 100;
+
+  // Calculate time until next energy
+  const getTimeUntilNextEnergy = (): string => {
+    if (energy >= maxEnergy) {
+      return 'Energy is full!';
+    }
+
+    if (!lastEnergyUpdate) {
+      return 'Calculating...';
+    }
+
+    const now = Date.now();
+    const elapsedSeconds = (now - lastEnergyUpdate) / 1000;
+    const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
+    const currentEnergy = energy || 0;
+    const energyGained = energyRegenRate * elapsedSeconds;
+    const fractionalEnergy = currentEnergy + energyGained;
+    
+    // Calculate how much energy is needed until next full point
+    // If fractionalEnergy is 5.3, we need 0.7 more to reach 6
+    const fractionalPart = fractionalEnergy % 1;
+    const energyNeeded = 1 - fractionalPart;
+    const secondsUntilNext = energyNeeded / energyRegenRate;
+    
+    if (secondsUntilNext <= 0 || fractionalEnergy >= maxEnergy) {
+      return 'Energy is full!';
+    }
+
+    const minutes = Math.floor(secondsUntilNext / 60);
+    const seconds = Math.floor(secondsUntilNext % 60);
+    
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s until next energy`;
+    } else {
+      return `${seconds}s until next energy`;
+    }
+  };
 
   const soloGames = [
     {
@@ -197,9 +237,10 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
     <div className="pt-16 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
       {/* Energy Bar */}
       <motion.div
-        className="bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-hidden mt-8"
+        className="relative bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-visible mt-8 cursor-pointer"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
+        onClick={() => setShowEnergyInfo(!showEnergyInfo)}
       >
         <div className="flex items-center gap-1.5 mb-1">
           <motion.div
@@ -226,6 +267,22 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
             />
           </motion.div>
         </div>
+        
+        {/* Energy Info Tooltip */}
+        <AnimatePresence>
+          {showEnergyInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-2 text-center z-50"
+            >
+              <p className="text-xs text-white font-medium">
+                {getTimeUntilNextEnergy()}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Solo Games Section */}

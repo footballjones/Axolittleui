@@ -1137,6 +1137,7 @@ export default function App() {
                   }}
                   energy={gameState.energy}
                   maxEnergy={gameState.maxEnergy}
+                  lastEnergyUpdate={gameState.lastEnergyUpdate}
                 />
               </div>
             )}
