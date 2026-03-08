@@ -30,10 +30,6 @@ function migrateV1toV2(state: StoredState): StoredState {
     state.foodItems = [];
   }
   
-  if (!state.poops) {
-    state.poops = [];
-  }
-  
   // Migrate health to waterQuality
   if (state.axolotl && state.axolotl.stats && 'health' in state.axolotl.stats) {
     state.axolotl.stats.waterQuality = (state.axolotl.stats as any).health;
@@ -138,7 +134,6 @@ export function getInitialGameState(): GameState {
     lineage: [],
     friends: [],
     foodItems: [],
-    poops: [],
     incubatorEgg: null,
     nurseryEggs: [],
     filterTier: undefined,
