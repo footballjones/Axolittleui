@@ -11,14 +11,12 @@ import { calculateRewards } from './config';
 
 const CANVAS_W = 360;
 const CANVAS_H = 640;
-// Use lower resolution for better mobile performance
-const RENDER_SCALE = 1;
-const GRAVITY = 0.35;
+const GRAVITY_BASE = 0.35;
 const JUMP_FORCE = -6.5;
-const HOOK_SPEED = 2.5;
-const HOOK_GAP = 200;
-const HOOK_WIDTH = 50;
-const HOOK_INTERVAL = 2500;
+const HOOK_SPEED_BASE = 2.5;
+const HOOK_GAP_BASE = 200;
+const HOOK_WIDTH_BASE = 50;
+const HOOK_INTERVAL_BASE = 2500;
 
 interface Hook {
   x: number;
