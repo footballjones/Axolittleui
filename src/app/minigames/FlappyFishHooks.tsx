@@ -72,11 +72,23 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const now = performance.now();
 
     // Progressive difficulty based on score
-    const difficulty = Math.min(1.0, g.score / 30); // Max difficulty at score 30
+    // Piecewise scaling: 20% at 15, 40% at 25, 70% at 40, 100% at 60
+    let difficulty = 0;
+    if (g.score < 15) {
+      difficulty = (g.score / 15) * 0.2; // 0 to 20%
+    } else if (g.score < 25) {
+      difficulty = 0.2 + ((g.score - 15) / 10) * 0.2; // 20% to 40%
+    } else if (g.score < 40) {
+      difficulty = 0.4 + ((g.score - 25) / 15) * 0.3; // 40% to 70%
+    } else if (g.score < 60) {
+      difficulty = 0.7 + ((g.score - 40) / 20) * 0.3; // 70% to 100%
+    } else {
+      difficulty = 1.0; // Max at 60+
+    }
+    
     const gravity = GRAVITY_BASE * (1 + difficulty * 0.4); // +40% max
     const hookSpeed = HOOK_SPEED_BASE * (1 + difficulty * 0.5); // +50% max
-    const hookGap = HOOK_GAP_BASE * (1 - difficulty * 0.3); // -30% max (smaller gaps)
-    const hookInterval = HOOK_INTERVAL_BASE * (1 - difficulty * 0.25); // -25% max (faster spawns)
+    // Hook gap and interval stay constant - only speed and gravity change
 
     // Clear - single operation
     ctx.fillStyle = '#1a3a4a';
@@ -86,21 +98,21 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird.vy += gravity;
     bird.y += bird.vy;
 
-    // Spawn hooks - progressive difficulty
-    if (now - g.lastHookTime > hookInterval) {
+    // Spawn hooks - constant interval and gap
+    if (now - g.lastHookTime > HOOK_INTERVAL_BASE) {
       const lastHook = hooks[hooks.length - 1];
       if (!lastHook || lastHook.x < CANVAS_W - 200) {
-        // Simple random gap
+        // Simple random gap - constant size
         const gapY = 80 + Math.random() * (CANVAS_H - 200);
         // Reuse hook object if available
         let hook = hooks.find(h => h.x < -100);
         if (hook) {
           hook.x = CANVAS_W;
           hook.gapY = gapY;
-          hook.gap = hookGap;
+          hook.gap = HOOK_GAP_BASE;
           hook.scored = false;
         } else {
-          hooks.push({ x: CANVAS_W, gapY, gap: hookGap, width: HOOK_WIDTH_BASE, scored: false });
+          hooks.push({ x: CANVAS_W, gapY, gap: HOOK_GAP_BASE, width: HOOK_WIDTH_BASE, scored: false });
         }
         g.lastHookTime = now;
       }
