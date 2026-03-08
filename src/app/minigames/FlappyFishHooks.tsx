@@ -136,6 +136,10 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           g.score += 1;
+          // Update React state every 3 points (infrequent enough to not cause issues)
+          if (g.score % 3 === 0) {
+            setScore(g.score);
+          }
         }
 
         // Collision - single simplified check
