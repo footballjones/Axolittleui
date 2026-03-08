@@ -90,21 +90,20 @@ export function ActionButtons({
           return (
             <motion.button
               key={label}
-              onClick={disabled ? undefined : onClick}
-              disabled={disabled}
-              className={`relative bg-gradient-to-b ${emptyGradient} rounded-xl overflow-hidden border border-white/10 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              whileTap={disabled ? {} : { scale: 0.93 }}
+              onClick={onClick}
+              className={`relative bg-gradient-to-b ${emptyGradient} rounded-xl overflow-hidden border border-white/10 ${disabled && value < 100 ? 'opacity-70' : ''}`}
+              whileTap={{ scale: 0.93 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               style={{ height: 48 }}
             >
               {/* Fill level - rises from bottom */}
               <motion.div
-                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${fillColor} rounded-b-xl pointer-events-none`}
+                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${fillColor} rounded-xl pointer-events-none`}
                 initial={{ height: 0 }}
                 animate={{ height: `${value}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
                 style={{
-                  boxShadow: `0 -4px 12px ${glowColor}`,
+                  boxShadow: value >= 100 ? `0 -4px 16px ${glowColor}, inset 0 0 20px ${glowColor}` : `0 -4px 12px ${glowColor}`,
                   zIndex: 1,
                 }}
               />
@@ -130,7 +129,7 @@ export function ActionButtons({
               )}
 
               {/* Content */}
-              <div className="relative z-10 flex flex-col items-center justify-center h-full gap-0.5">
+              <div className="relative z-10 flex flex-col items-center justify-center h-full gap-0.5 pointer-events-none">
                 <motion.div
                   animate={isLow && !disabled ? { scale: [1, 1.15, 1] } : {}}
                   transition={{ duration: 0.6, repeat: isLow ? Infinity : 0, repeatDelay: 0.4 }}
