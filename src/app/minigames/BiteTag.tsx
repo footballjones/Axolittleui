@@ -92,6 +92,9 @@ interface Entity {
   wallAvoidDx: number;
   wallAvoidDy: number;
   wallAvoidUntil: number;
+  // Tag targeting restriction
+  lastTagger: Entity | null;
+  cannotTargetTaggerUntil: number;
 }
 
 interface Joystick {
@@ -152,6 +155,8 @@ export function BiteTag({ onEnd, energy, speed = 0, stamina = 0 }: MiniGameProps
       fleeAngle: (Math.random() - 0.5) * 1.2,
       fleeAngleNext: 0,
       wallAvoidDx: 0, wallAvoidDy: 0, wallAvoidUntil: 0,
+      lastTagger: null,
+      cannotTargetTaggerUntil: 0,
     };
   }, []);
 
@@ -330,6 +335,9 @@ export function BiteTag({ onEnd, energy, speed = 0, stamina = 0 }: MiniGameProps
       target.invulnUntil = now + TAG_INVULN_MS;
       // No tag backs: previous "it" gets immunity
       previousIt.invulnUntil = now + TAG_INVULN_MS;
+      // Bot cannot target the player who tagged them for 3 seconds
+      target.lastTagger = tagger;
+      target.cannotTargetTaggerUntil = now + 3000;
 
       // Check elimination
       if (target.bites >= MAX_BITES) {
@@ -479,26 +487,55 @@ export function BiteTag({ onEnd, energy, speed = 0, stamina = 0 }: MiniGameProps
       // CHASE MODE
       const others = alive.filter(e => e !== b);
       const needNewTarget = !b.lockTarget || now > b.lockUntil
-        || !others.includes(b.lockTarget) || b.lockTarget.eliminated;
+        || !others.includes(b.lockTarget) || b.lockTarget.eliminated
+        || (b.lastTagger === b.lockTarget && now < b.cannotTargetTaggerUntil);
 
       if (needNewTarget) {
-        const minBites = Math.min(...others.map(e => e.bites));
-        let bestTarget = null;
-        let bestPriority = -Infinity;
-
-        for (const e of others) {
-          const d = Math.sqrt((b.x - e.x) ** 2 + (b.y - e.y) ** 2);
-          const distPriority = 300 / (d + 30);
-          const winnerBonus = (e.bites <= minBites) ? 2.5 : 0;
-          const priority = distPriority + winnerBonus;
-          if (priority > bestPriority) {
-            bestPriority = priority;
-            bestTarget = e;
+        // Filter out the player who tagged this bot (if still in cooldown)
+        const availableTargets = others.filter(e => {
+          if (b.lastTagger === e && now < b.cannotTargetTaggerUntil) {
+            return false; // Cannot target the player who tagged them yet
           }
-        }
+          return true;
+        });
 
-        b.lockTarget = bestTarget;
-        b.lockUntil = now + 2000 + Math.random() * 2000;
+        if (availableTargets.length === 0) {
+          // If no targets available (all are restricted), allow targeting anyone
+          // This prevents bots from getting stuck
+          const minBites = Math.min(...others.map(e => e.bites));
+          let bestTarget = null;
+          let bestPriority = -Infinity;
+
+          for (const e of others) {
+            const d = Math.sqrt((b.x - e.x) ** 2 + (b.y - e.y) ** 2);
+            const distPriority = 300 / (d + 30);
+            const winnerBonus = (e.bites <= minBites) ? 2.5 : 0;
+            const priority = distPriority + winnerBonus;
+            if (priority > bestPriority) {
+              bestPriority = priority;
+              bestTarget = e;
+            }
+          }
+          b.lockTarget = bestTarget;
+          b.lockUntil = now + 2000 + Math.random() * 2000;
+        } else {
+          const minBites = Math.min(...availableTargets.map(e => e.bites));
+          let bestTarget = null;
+          let bestPriority = -Infinity;
+
+          for (const e of availableTargets) {
+            const d = Math.sqrt((b.x - e.x) ** 2 + (b.y - e.y) ** 2);
+            const distPriority = 300 / (d + 30);
+            const winnerBonus = (e.bites <= minBites) ? 2.5 : 0;
+            const priority = distPriority + winnerBonus;
+            if (priority > bestPriority) {
+              bestPriority = priority;
+              bestTarget = e;
+            }
+          }
+          b.lockTarget = bestTarget;
+          b.lockUntil = now + 2000 + Math.random() * 2000;
+        }
       }
 
       const chaseTarget = b.lockTarget;
