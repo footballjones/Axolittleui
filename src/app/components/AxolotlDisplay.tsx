@@ -6,11 +6,20 @@ interface AxolotlDisplayProps {
   axolotl: Axolotl;
   foodItems: FoodItem[];
   onEatFood: (foodId: string) => void;
+  clickTarget?: { x: number; y: number; timestamp: number } | null;
 }
 
-export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplayProps) {
+export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: AxolotlDisplayProps) {
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [facingLeft, setFacingLeft] = useState(false);
+
+  // Handle click target - move axolotl to clicked position
+  useEffect(() => {
+    if (clickTarget) {
+      setFacingLeft(clickTarget.x < position.x);
+      setPosition({ x: clickTarget.x, y: clickTarget.y });
+    }
+  }, [clickTarget?.timestamp]); // Only trigger when timestamp changes (new click)
 
   // Check for nearby food and swim to it
   useEffect(() => {
@@ -45,11 +54,12 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
     if (foodItems.length > 0) return;
 
     const swimInterval = setInterval(() => {
-      const newX = Math.random() * 85 + 5;
-      const newY = Math.random() * 85 + 5;
+      // Center third: 33-66% of aquarium (columns split into thirds)
+      const newX = Math.random() * 33 + 33;
+      const newY = Math.random() * 33 + 33;
       setFacingLeft(newX < position.x);
       setPosition({ x: newX, y: newY });
-    }, 4000 + Math.random() * 2000);
+    }, 12000 + Math.random() * 6000); // 12-18 seconds (less often)
 
     return () => clearInterval(swimInterval);
   }, [foodItems.length, position.x]);
@@ -79,7 +89,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood }: AxolotlDisplay
         top: `${position.y}%`,
       }}
       transition={{
-        duration: 6,
+        duration: 15, // Slower movement
         ease: [0.2, 0.8, 0.4, 1],
       }}
       style={{

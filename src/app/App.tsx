@@ -57,6 +57,7 @@ export default function App() {
   const [notificationsExpanded, setNotificationsExpanded] = useState(true);
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showDailyLogin, setShowDailyLogin] = useState(false);
+  const [clickTarget, setClickTarget] = useState<{ x: number; y: number; timestamp: number } | null>(null);
   
   // Menu state from hook
   const menuState = useMenuState();
@@ -975,7 +976,17 @@ export default function App() {
                   >
                     {/* Wider Aquarium Container */}
                     <div 
-                      className="relative h-full w-[250%] sm:w-[200%]"
+                      className="relative h-full w-[250%] sm:w-[200%] cursor-pointer"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = ((e.clientX - rect.left) / rect.width) * 100;
+                        const y = ((e.clientY - rect.top) / rect.height) * 100;
+                        // Clamp to valid aquarium bounds (0-100%)
+                        const clampedX = Math.max(5, Math.min(95, x));
+                        const clampedY = Math.max(5, Math.min(95, y));
+                        // Use timestamp to ensure each click is unique and triggers movement
+                        setClickTarget({ x: clampedX, y: clampedY, timestamp: Date.now() });
+                      }}
                     >
                       <AquariumBackground
                         background={customization.background}
@@ -987,11 +998,12 @@ export default function App() {
                       ))}
                       
                       {/* Axolotl */}
-                      <div className="absolute inset-0 z-10">
+                      <div className="absolute inset-0 z-10 pointer-events-none">
                         <AxolotlDisplay 
                           axolotl={axolotl} 
                           foodItems={gameState.foodItems || []}
                           onEatFood={handleEatFood}
+                          clickTarget={clickTarget}
                         />
                       </div>
                     </div>
