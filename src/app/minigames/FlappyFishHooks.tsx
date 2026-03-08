@@ -1,7 +1,7 @@
 /**
  * Flappy Fish Hooks - Flappy Bird style
  * Ultra-optimized for consistent 60fps on mobile
- * Zero React state updates during gameplay
+ * Fixed timestep, zero React state updates during gameplay
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -45,7 +45,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird: { x: number; y: number; vy: number; size: number };
     hooks: Hook[];
     lastHookTime: number;
-    scoreUpdateCounter: number; // Track frames since last score update
+    lastScoreUpdate: number;
     onGameEnd: (() => void) | null;
   }>({
     ctx: null,
@@ -57,11 +57,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird: { x: 80, y: CANVAS_H / 2, vy: 0, size: 22 },
     hooks: [],
     lastHookTime: 0,
-    scoreUpdateCounter: 0,
+    lastScoreUpdate: 0,
     onGameEnd: null,
   });
 
-  // Ultra-optimized game loop - no React, no state updates
+  // Ultra-optimized game loop - fixed timestep, no variable timing
   const gameLoop = () => {
     const game = gameRef.current;
     if (!game.isPlaying || game.isPaused || !game.ctx || game.animationId === null) {
@@ -77,11 +77,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const hooks = game.hooks;
     const now = performance.now();
 
-    // Clear - use fillRect for better performance than clearRect
+    // Clear
     ctx.fillStyle = '#1a3a4a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Bird physics
+    // Bird physics - fixed timestep
     bird.vy += GRAVITY;
     bird.y += bird.vy;
 
@@ -103,7 +103,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       }
     }
 
-    // Process hooks - single pass, optimized
+    // Process hooks - single optimized pass
     let shouldEnd = false;
     const bx = bird.x;
     const by = bird.y;
@@ -114,11 +114,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bBottom = by + bs;
 
     // Limit hooks to prevent memory issues
-    if (hooks.length > 15) {
-      hooks.splice(0, hooks.length - 15);
+    if (hooks.length > 12) {
+      hooks.splice(0, hooks.length - 12);
     }
     
-    // Batch draw hooks - set fillStyle once
+    // Draw hooks - batch operations
     ctx.fillStyle = '#666';
     
     for (let i = hooks.length - 1; i >= 0; i--) {
@@ -136,7 +136,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         const top = h.gapY - h.gap / 2;
         const bottom = h.gapY + h.gap / 2;
         
-        // Draw both rectangles in one go
+        // Draw
         ctx.fillRect(h.x, 0, h.width, top);
         ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
 
@@ -144,11 +144,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           game.score += 1;
-          game.scoreUpdateCounter += 1;
-          // Only update React state every 20 frames OR every 5 points (much less frequent)
-          if (game.scoreUpdateCounter >= 20 || game.score % 5 === 0) {
+          // Update score state only every 3 points or every 1 second
+          const timeSinceUpdate = now - game.lastScoreUpdate;
+          if (game.score % 3 === 0 || timeSinceUpdate > 1000) {
             setScore(game.score);
-            game.scoreUpdateCounter = 0;
+            game.lastScoreUpdate = now;
           }
         }
 
@@ -172,20 +172,18 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Draw bird - minimize path operations
+    // Draw bird - minimal operations
     ctx.fillStyle = '#E8A0BF';
     ctx.beginPath();
     ctx.arc(bx, by, bs, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eyes - single path
     ctx.fillStyle = '#222';
     ctx.beginPath();
     ctx.arc(bx + 6, by - 5, 3, 0, Math.PI * 2);
     ctx.arc(bx + 6, by + 5, 3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Gills and smile - single path
     ctx.strokeStyle = '#D48BA8';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -274,7 +272,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   useEffect(() => {
     const game = gameRef.current;
     if (game.isPlaying && !game.isPaused && game.ctx && !showOverlay) {
-      if (!game.animationId && gameLoop) {
+      if (!game.animationId) {
         game.animationId = requestAnimationFrame(gameLoop);
       }
     } else {
@@ -297,10 +295,10 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     game.isPlaying = true;
     game.isPaused = false;
     game.score = 0;
-    game.scoreUpdateCounter = 0;
     game.bird = { x: 80, y: CANVAS_H / 2, vy: 0, size: 22 };
     game.hooks = [];
     game.lastHookTime = performance.now();
+    game.lastScoreUpdate = performance.now();
     
     setScore(0);
     setShowOverlay(false);
