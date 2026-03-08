@@ -116,7 +116,6 @@ function GameTile({ game, index, delayOffset = 0, expandedId, onToggleInfo, onSe
 
 export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 10, lastEnergyUpdate }: MiniGameMenuProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showEnergyInfo, setShowEnergyInfo] = useState(false);
   const [energyTimeText, setEnergyTimeText] = useState<string>('');
 
   const toggleInfo = (id: string) => {
@@ -125,13 +124,8 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
 
   const energyPercent = (energy / maxEnergy) * 100;
 
-  // Calculate time until next energy - updates live
+  // Calculate time until next energy - updates live, always visible
   useEffect(() => {
-    if (!showEnergyInfo) {
-      setEnergyTimeText('');
-      return;
-    }
-
     const updateTimer = () => {
       if (energy >= maxEnergy) {
         setEnergyTimeText('Energy is full!');
@@ -224,7 +218,7 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
     return () => {
       clearInterval(interval);
     };
-  }, [showEnergyInfo, energy, maxEnergy, lastEnergyUpdate]);
+  }, [energy, maxEnergy, lastEnergyUpdate]);
 
   const soloGames = [
     {
@@ -302,10 +296,9 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
     <div className="pt-16 px-4 sm:px-6 pb-32 space-y-4 sm:space-y-6 min-h-full">
       {/* Energy Bar */}
       <motion.div
-        className="relative bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-visible mt-8 cursor-pointer"
+        className="relative bg-white/[0.08] backdrop-blur-2xl rounded-xl border border-white/10 px-2.5 py-1.5 overflow-visible mt-8"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        onClick={() => setShowEnergyInfo(!showEnergyInfo)}
       >
         <div className="flex items-center gap-1.5 mb-1">
           <motion.div
@@ -333,21 +326,14 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
           </motion.div>
         </div>
         
-        {/* Energy Info Tooltip */}
-        <AnimatePresence>
-          {showEnergyInfo && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-2 text-center z-50"
-            >
-              <p className="text-xs text-white font-medium">
-                {energyTimeText || 'Calculating...'}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Energy Timer - Always visible */}
+        {energyTimeText && (
+          <div className="mt-1.5 text-center">
+            <p className="text-[9px] text-white/70 font-medium">
+              {energyTimeText}
+            </p>
+          </div>
+        )}
       </motion.div>
 
       {/* Solo Games Section */}
