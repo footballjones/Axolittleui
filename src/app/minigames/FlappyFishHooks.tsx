@@ -94,7 +94,15 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
               : Math.min(CANVAS_H - 120, lastHook.gapY + minDist);
           }
         }
-        hooks.push({ x: CANVAS_W, gapY, gap: HOOK_GAP, width: HOOK_WIDTH, scored: false });
+        // Reuse hook object if available, otherwise create new
+        let hook = hooks.find(h => h.x < -100);
+        if (hook) {
+          hook.x = CANVAS_W;
+          hook.gapY = gapY;
+          hook.scored = false;
+        } else {
+          hooks.push({ x: CANVAS_W, gapY, gap: HOOK_GAP, width: HOOK_WIDTH, scored: false });
+        }
         g.lastHookTime = now;
       }
     }
@@ -119,9 +127,9 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
 
+      // Don't remove hooks, just mark as off-screen (reuse them)
       if (h.x + h.width < -10) {
-        hooks.splice(i, 1);
-        continue;
+        continue; // Skip drawing but keep in array for reuse
       }
 
       if (h.x < CANVAS_W && h.x + h.width > 0) {
