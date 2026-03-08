@@ -144,14 +144,16 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       }
 
       const now = Date.now();
-      const elapsedSeconds = (now - lastEnergyUpdate) / 1000;
+      const elapsedSinceLastUpdate = Math.max(0, (now - lastEnergyUpdate) / 1000);
+      
       const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
       const currentEnergy = energy || 0;
       
       // Calculate actual fractional energy
       // Since energy is floored in storage, we need to calculate the fractional part
       // based on time elapsed since lastEnergyUpdate
-      const energyGained = energyRegenRate * elapsedSeconds;
+      // lastEnergyUpdate represents when energy was last "snapped" to an integer
+      const energyGained = energyRegenRate * elapsedSinceLastUpdate;
       const fractionalEnergy = currentEnergy + energyGained;
       
       // Cap at max energy
@@ -161,13 +163,23 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       }
       
       // Calculate how much energy is needed until next full point
-      // If we're at 5.3, we need 0.7 more to reach 6
       const currentFloor = Math.floor(fractionalEnergy);
       const nextFullPoint = currentFloor + 1;
+      
+      // If we're already at or past the next point, check if we're at max
+      if (fractionalEnergy >= nextFullPoint - 0.0001) {
+        if (fractionalEnergy >= maxEnergy) {
+          setEnergyTimeText('Energy is full!');
+        } else {
+          // Very close to next point, show 0s
+          setEnergyTimeText('0s until next energy');
+        }
+        return;
+      }
+      
       const energyNeeded = nextFullPoint - fractionalEnergy;
       
       // Calculate seconds needed: energyNeeded / (energy per second)
-      // energyRegenRate is already per second, so divide energyNeeded by it
       const secondsUntilNext = energyNeeded / energyRegenRate;
       
       // Ensure we don't show negative time
@@ -176,10 +188,11 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
         return;
       }
       
-      // Round down to avoid showing time that hasn't passed yet
+      // Use floor to show time that has definitely not passed yet
+      // This prevents the timer from jumping backwards
       const totalSeconds = Math.floor(secondsUntilNext);
       
-      // Cap at 1 hour max (shouldn't normally exceed this)
+      // Cap at 1 hour max (3600 seconds)
       if (totalSeconds >= 3600) {
         setEnergyTimeText(`60m 0s until next energy`);
         return;
@@ -208,7 +221,9 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       updateTimer();
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [showEnergyInfo, energy, maxEnergy, lastEnergyUpdate]);
 
   const soloGames = [
