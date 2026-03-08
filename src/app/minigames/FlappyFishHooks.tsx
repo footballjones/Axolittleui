@@ -144,11 +144,10 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
         if (!h.scored && h.x + h.width < bx) {
           h.scored = true;
           game.score += 1;
-          // Update score state only every 5 points or every 2 seconds (minimize React re-renders)
-          const timeSinceUpdate = now - game.lastScoreUpdate;
-          if (game.score % 5 === 0 || timeSinceUpdate > 2000) {
-            setScore(game.score);
-            game.lastScoreUpdate = now;
+          // Update score display directly via DOM - NO React state updates during gameplay
+          const scoreEl = document.querySelector('[data-fish-hooks-score]');
+          if (scoreEl) {
+            scoreEl.textContent = `Score: ${game.score}`;
           }
         }
 
@@ -304,6 +303,12 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setShowOverlay(false);
     setGameEnded(false);
     setFinalRewards(null);
+    
+    // Update score display directly
+    const scoreEl = document.querySelector('[data-fish-hooks-score]');
+    if (scoreEl) {
+      scoreEl.textContent = 'Score: 0';
+    }
     
     // Draw initial frame
     const ctx = game.ctx;
