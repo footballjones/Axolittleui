@@ -81,6 +81,7 @@ export interface GameState {
   lastLoginDate?: string; // YYYY-MM-DD format for daily login bonus
   loginStreak?: number; // Current login streak (days)
   lastLoginBonusDate?: string; // YYYY-MM-DD format for login bonus tracking
+  cleanlinessLowSince?: number; // Timestamp when cleanliness first dropped below 50%
 }
 
 export interface Friend {

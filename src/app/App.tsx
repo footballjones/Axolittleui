@@ -224,8 +224,11 @@ export default function App() {
         const stateWithUpdatedShrimp = updateShrimp(prev);
         
         // Update stats (pass gameState for shrimp effects)
-        let updated = updateStats(prev.axolotl, stateWithUpdatedShrimp);
-        updated = checkEvolution(updated);
+        const statsResult = updateStats(prev.axolotl, stateWithUpdatedShrimp);
+        let updated = checkEvolution(statsResult.axolotl);
+        
+        // Merge any gameState updates (like cleanlinessLowSince)
+        const gameStateUpdates = statsResult.gameState || {};
 
         // Energy regen using timestamp-based calculation to preserve fractional energy
         const now = Date.now();
@@ -245,6 +248,7 @@ export default function App() {
 
         return {
           ...stateWithUpdatedShrimp,
+          ...gameStateUpdates, // Merge cleanlinessLowSince and any other gameState updates
           axolotl: updated,
           energy: Math.floor(newEnergy), // Floor only for display/storage
           maxEnergy: maxEnergy,
@@ -792,8 +796,8 @@ export default function App() {
                           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2.5" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
                             {[
                               { emoji: '🍤', color: 'rgba(16,185,129,0.12)', border: 'rgba(52,211,153,0.18)', title: 'Keep Your Axolotl Fed', tip: "Tap Feed to drop food pellets. Your axolotl swims up and eats them. Hunger drops over time — don't let it bottom out!" },
-                              { emoji: '🎮', color: 'rgba(139,92,246,0.12)', border: 'rgba(167,139,250,0.18)', title: 'Play Mini Games', tip: 'Head to Mini Games to earn XP and coins. Each game boosts a different stat — feeding, cleaning, or happiness.' },
-                              { emoji: '🧹', color: 'rgba(14,165,233,0.12)', border: 'rgba(56,189,248,0.18)', title: 'Clean the Tank', tip: "Tap Clean to scrub algae. Dirty tanks lower water quality over time. Keep cleanliness above 50%." },
+                              { emoji: '🎮', color: 'rgba(139,92,246,0.12)', border: 'rgba(167,139,250,0.18)', title: 'Play Mini Games', tip: 'Head to Mini Games to earn XP and coins. Level up your axolotl to unlock the ability to rebirth at Level 40.' },
+                              { emoji: '🧹', color: 'rgba(14,165,233,0.12)', border: 'rgba(56,189,248,0.18)', title: 'Clean the Tank', tip: "Tap Clean to remove poops and keep the tank clean. If cleanliness drops below 50% for more than a day, it will start to affect water quality decay." },
                               { emoji: '💧', color: 'rgba(99,102,241,0.12)', border: 'rgba(129,140,248,0.18)', title: 'Change the Water', tip: 'Tap Water to refresh the tank and directly boost water quality. Good water quality slows decay of other stats.' },
                               { emoji: '🌱', color: 'rgba(34,197,94,0.12)', border: 'rgba(74,222,128,0.18)', title: 'Evolve Through 4 Stages', tip: 'Your axolotl grows from Baby → Juvenile → Adult → Elder. Keep all stats high to evolve faster. Eggs hatch into Baby at Level 1.' },
                               { emoji: '✨', color: 'rgba(168,85,247,0.12)', border: 'rgba(216,180,254,0.18)', title: 'Rebirth for Bonuses', tip: 'At Elder stage (Level 40) you can Rebirth — start a new generation with bonus coins and inherited colour traits.' },

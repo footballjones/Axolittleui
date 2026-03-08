@@ -68,7 +68,7 @@ export function generateAxolotl(
   };
 }
 
-export function updateStats(axolotl: Axolotl, gameState?: GameState): Axolotl {
+export function updateStats(axolotl: Axolotl, gameState?: GameState): { axolotl: Axolotl; gameState?: Partial<GameState> } {
   // Delegate to needsSystem for better organization
   return updateWellbeingStats(axolotl, gameState);
 }

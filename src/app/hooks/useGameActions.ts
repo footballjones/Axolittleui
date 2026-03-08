@@ -106,9 +106,14 @@ export function useGameActions({
         },
       };
       
+      // Reset cleanlinessLowSince if cleanliness is now above 50%
+      const newCleanliness = Math.min(100, prev.axolotl.stats.cleanliness + 35);
+      const shouldResetTracker = newCleanliness >= 50;
+      
       return {
         ...prev,
         axolotl: updated,
+        cleanlinessLowSince: shouldResetTracker ? undefined : prev.cleanlinessLowSince,
       };
     });
   }, []);
