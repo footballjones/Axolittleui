@@ -127,13 +127,22 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
 
   // Calculate time until next energy - updates live, always visible
   useEffect(() => {
-    // Reset calculation when energy or lastEnergyUpdate changes significantly
-    const now = Date.now();
-    const shouldRecalculate = !initialCalculationRef.current || 
-      initialCalculationRef.current.targetEnergy !== energy ||
-      (lastEnergyUpdate && Math.abs(now - (initialCalculationRef.current.baseTime + initialCalculationRef.current.secondsUntilNext * 1000)) > 10000);
-    
-    if (shouldRecalculate && lastEnergyUpdate) {
+    // Only recalculate when ENERGY changes (not when lastEnergyUpdate changes)
+    // This prevents the timer from resetting when lastEnergyUpdate updates every 5 seconds
+    if (!initialCalculationRef.current || initialCalculationRef.current.targetEnergy !== energy) {
+      if (energy >= maxEnergy) {
+        initialCalculationRef.current = null;
+        setEnergyTimeText('Energy is full!');
+        return;
+      }
+
+      if (!lastEnergyUpdate) {
+        setEnergyTimeText('Calculating...');
+        return;
+      }
+
+      // Calculate initial time when energy changes
+      const now = Date.now();
       const elapsedSinceLastUpdate = Math.max(0, (now - lastEnergyUpdate) / 1000);
       const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second
       const currentEnergy = energy || 0;
@@ -157,6 +166,16 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
           targetEnergy: energy,
           secondsUntilNext: secondsUntilNext
         };
+      } else if (secondsUntilNext > 3600) {
+        initialCalculationRef.current = {
+          baseTime: now,
+          targetEnergy: energy,
+          secondsUntilNext: 3600
+        };
+      } else {
+        initialCalculationRef.current = null;
+        setEnergyTimeText('Energy is full!');
+        return;
       }
     }
 
@@ -168,52 +187,18 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       }
 
       if (!initialCalculationRef.current) {
-        if (!lastEnergyUpdate) {
-          setEnergyTimeText('Calculating...');
-          return;
-        }
-        // Recalculate if we don't have a stored calculation
-        const now = Date.now();
-        const elapsedSinceLastUpdate = Math.max(0, (now - lastEnergyUpdate) / 1000);
-        const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600;
-        const currentEnergy = energy || 0;
-        const energyGained = energyRegenRate * elapsedSinceLastUpdate;
-        const fractionalEnergy = currentEnergy + energyGained;
-        
-        if (fractionalEnergy >= maxEnergy) {
-          setEnergyTimeText('Energy is full!');
-          return;
-        }
-        
-        const currentFloor = Math.floor(fractionalEnergy);
-        const nextFullPoint = currentFloor + 1;
-        const energyNeeded = nextFullPoint - fractionalEnergy;
-        const secondsUntilNext = energyNeeded / energyRegenRate;
-        
-        if (secondsUntilNext > 0 && secondsUntilNext <= 3600) {
-          initialCalculationRef.current = {
-            baseTime: now,
-            targetEnergy: energy,
-            secondsUntilNext: secondsUntilNext
-          };
-        } else if (secondsUntilNext > 3600) {
-          setEnergyTimeText('60m 0s until next energy');
-          return;
-        } else {
-          setEnergyTimeText('Energy is full!');
-          return;
-        }
+        setEnergyTimeText('Calculating...');
+        return;
       }
 
-      // Calculate remaining time based on stored calculation
+      // Simply count down from the stored calculation
       const elapsed = (Date.now() - initialCalculationRef.current.baseTime) / 1000;
       const remainingSeconds = Math.max(0, initialCalculationRef.current.secondsUntilNext - elapsed);
       const totalSeconds = Math.floor(remainingSeconds);
       
       if (totalSeconds <= 0) {
-        // Time reached, recalculate for next energy point
-        initialCalculationRef.current = null;
-        updateTimer(); // Recursive call to recalculate
+        // Timer reached 0, but energy hasn't updated yet - show 0s
+        setEnergyTimeText('0s until next energy');
         return;
       }
       
@@ -236,14 +221,12 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
     updateTimer();
 
     // Update every second to show live countdown
-    const interval = setInterval(() => {
-      updateTimer();
-    }, 1000);
+    const interval = setInterval(updateTimer, 1000);
 
     return () => {
       clearInterval(interval);
     };
-  }, [energy, maxEnergy, lastEnergyUpdate]);
+  }, [energy, maxEnergy]); // Only depend on energy, NOT lastEnergyUpdate
 
   const soloGames = [
     {
