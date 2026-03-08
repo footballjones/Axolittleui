@@ -109,8 +109,13 @@ export function DecorationsPanel({
 
       {/* Content */}
       <div
-        className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2"
-        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-2"
+        style={{ 
+          WebkitOverflowScrolling: 'touch', 
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain',
+          paddingBottom: '2rem',
+        }}
       >
         {decorationsTab === 'store' ? (
           /* ── STORE TAB ── */
