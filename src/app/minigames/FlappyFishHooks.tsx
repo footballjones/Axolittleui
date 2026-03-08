@@ -109,37 +109,36 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bTop = by - bs;
     const bBottom = by + bs;
 
-    // Process hooks - simplified loop
+    // Process hooks - ultra-simplified
     ctx.fillStyle = '#666';
     
-    let activeHooks = 0;
-    for (let i = 0; i < hooks.length; i++) {
+    // Process only first 3 hooks (most visible ones)
+    const maxProcess = Math.min(3, hooks.length);
+    for (let i = 0; i < maxProcess; i++) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
 
-      // Skip off-screen hooks
-      if (h.x + h.width < -10) {
+      // Skip off-screen
+      if (h.x + h.width < -10 || h.x > CANVAS_W) {
         continue;
       }
 
-      // Only process visible hooks
-      if (h.x < CANVAS_W && h.x + h.width > 0) {
-        activeHooks++;
-        const top = h.gapY - h.gap / 2;
-        const bottom = h.gapY + h.gap / 2;
-        
-        // Draw
-        ctx.fillRect(h.x, 0, h.width, top);
-        ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
+      const top = h.gapY - h.gap / 2;
+      const bottom = h.gapY + h.gap / 2;
+      
+      // Draw - batch operations
+      ctx.fillRect(h.x, 0, h.width, top);
+      ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
 
-        // Score
-        if (!h.scored && h.x + h.width < bx) {
-          h.scored = true;
-          g.score += 1;
-        }
+      // Score
+      if (!h.scored && h.x + h.width < bx) {
+        h.scored = true;
+        g.score += 1;
+      }
 
-        // Collision - single simplified check
-        if (h.x < bRight && h.x + h.width > bLeft && (bTop < top || bBottom > bottom)) {
+      // Collision - ultra-simple
+      if (h.x < bRight && h.x + h.width > bLeft) {
+        if (bTop < top || bBottom > bottom) {
           g.running = false;
           g.frameId = null;
           setScore(g.score);
@@ -157,9 +156,6 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
           return;
         }
       }
-      
-      // Limit active hooks
-      if (activeHooks >= 4) break;
     }
 
     // Boundary check
@@ -181,19 +177,17 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Draw bird - single circle only (fastest possible)
+    // Draw bird - single circle only
     ctx.fillStyle = '#E8A0BF';
     ctx.beginPath();
     ctx.arc(bx, by, bs, 0, Math.PI * 2);
     ctx.fill();
 
-    // Score - only update every 5 frames to reduce text rendering
-    if (g.score > 0 && g.score % 1 === 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
-    }
+    // Score on canvas
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
 
     // Continue loop - self-managing, no React
     if (g.running && !g.paused && g.ctx) {
