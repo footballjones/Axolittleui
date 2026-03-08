@@ -35,6 +35,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   const [finalRewards, setFinalRewards] = useState<{ tier: string; xp: number; coins: number; opals?: number } | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scoreDisplayRef = useRef(0);
   const gameRef = useRef<{
     ctx: CanvasRenderingContext2D | null;
     animationId: number | null;
@@ -194,6 +195,12 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     ctx.arc(bx + 10, by, 5, -0.3, Math.PI * 0.3);
     ctx.stroke();
 
+    // Draw score on canvas (no React re-renders)
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`Score: ${game.score}`, CANVAS_W - 10, 30);
+
     // Schedule next frame
     if (game.isPlaying && !game.isPaused && game.animationId !== null) {
       game.animationId = requestAnimationFrame(gameLoop);
@@ -320,7 +327,7 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   return (
     <GameWrapper
       gameName="Fish Hooks"
-      score={gameRef.current.isPlaying ? gameRef.current.score : score}
+      score={score}
       onEnd={onEnd}
       energy={energy}
       onPause={handlePause}
