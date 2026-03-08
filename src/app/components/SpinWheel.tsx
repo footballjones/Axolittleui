@@ -65,9 +65,15 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
     const reward = WEIGHTED_SECTIONS[randomIndex];
     
     // Find which section this reward corresponds to
-    const targetSectionIndex = WHEEL_SECTIONS.findIndex(s => 
-      s.value === reward.value && s.type === reward.type
-    );
+    // Use findLastIndex to get the LAST matching section if there are duplicates
+    // (though there shouldn't be, but this ensures we get the right one)
+    let targetSectionIndex = -1;
+    for (let i = WHEEL_SECTIONS.length - 1; i >= 0; i--) {
+      if (WHEEL_SECTIONS[i].value === reward.value && WHEEL_SECTIONS[i].type === reward.type) {
+        targetSectionIndex = i;
+        break;
+      }
+    }
     
     if (targetSectionIndex === -1) {
       console.error('Could not find section for reward', reward);
@@ -75,30 +81,46 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
       return;
     }
     
+    // Verify we found the correct section
+    const foundSection = WHEEL_SECTIONS[targetSectionIndex];
+    if (foundSection.value !== reward.value || foundSection.type !== reward.type) {
+      console.error('Section mismatch!', { reward, foundSection, targetSectionIndex });
+      setIsSpinning(false);
+      return;
+    }
+    
     // Calculate the center angle of the target section (in degrees, starting from top)
     // SVG is rotated -90deg, so first section starts at top (0deg in our coordinate system)
+    // We need to calculate where the center of the target section is
     let cumulativeAngle = 0;
     for (let i = 0; i < targetSectionIndex; i++) {
       cumulativeAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
     }
-    const sectionCenterAngle = cumulativeAngle + (WHEEL_SECTIONS[targetSectionIndex].size * anglePerUnit) / 2;
+    const sectionSize = WHEEL_SECTIONS[targetSectionIndex].size * anglePerUnit;
+    const sectionCenterAngle = cumulativeAngle + sectionSize / 2;
     
-    // Pointer is at top (0 degrees in our coordinate system)
-    // We want the section center to align with the pointer after rotation
-    // Since we're rotating clockwise, we need: currentPosition + rotation = 0 (pointer position)
-    // So: rotation = 360 - sectionCenterAngle (to bring it to top)
+    // Pointer is at top (0 degrees in our coordinate system after SVG -90deg rotation)
+    // The wheel rotates clockwise (positive rotation)
+    // We want: sectionCenterAngle + rotation = 0 (mod 360) to align with pointer
+    // So: rotation = 360 - sectionCenterAngle (mod 360)
     // Add multiple full spins for effect (4-6 spins)
     const fullSpins = 4 + Math.random() * 2; // 4-6 full rotations
+    // Calculate final rotation: full spins + adjustment to align section center with pointer
     const finalRotation = fullSpins * 360 + (360 - sectionCenterAngle);
+    
+    // Store the expected reward for verification
+    const expectedReward = { type: reward.type, amount: reward.value };
+    
     
     setRotation(finalRotation);
 
     // Show result after animation
     setTimeout(() => {
       setIsSpinning(false);
-      setSelectedReward({ type: reward.type, amount: reward.value });
+      // Use the expected reward to ensure consistency
+      setSelectedReward(expectedReward);
       setShowResult(true);
-      onSpin({ type: reward.type, amount: reward.value });
+      onSpin(expectedReward);
     }, 4000);
   }, [isSpinning, canSpin, onSpin, anglePerUnit]);
 
