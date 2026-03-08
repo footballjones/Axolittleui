@@ -11,6 +11,8 @@ import { calculateRewards } from './config';
 
 const CANVAS_W = 360;
 const CANVAS_H = 640;
+// Use lower resolution for better mobile performance
+const RENDER_SCALE = 1;
 const GRAVITY = 0.35;
 const JUMP_FORCE = -6.5;
 const HOOK_SPEED = 2.5;
@@ -106,8 +108,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bTop = by - bs;
     const bBottom = by + bs;
 
-    // Keep only 6 hooks max
-    if (hooks.length > 6) {
+    // Keep only 5 hooks max - absolute minimum
+    if (hooks.length > 5) {
       hooks.shift();
     }
     
@@ -178,22 +180,19 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
       return;
     }
 
-    // Draw bird - ultra-simple (just circle, no details)
+    // Draw bird - single circle only (fastest possible)
     ctx.fillStyle = '#E8A0BF';
     ctx.beginPath();
     ctx.arc(bx, by, bs, 0, Math.PI * 2);
     ctx.fill();
 
-    // Minimal eyes
-    ctx.fillStyle = '#222';
-    ctx.fillRect(bx + 3, by - 5, 6, 3);
-    ctx.fillRect(bx + 3, by + 2, 6, 3);
-
-    // Score
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
+    // Score - only update every 5 frames to reduce text rendering
+    if (g.score > 0 && g.score % 1 === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${g.score}`, CANVAS_W - 10, 28);
+    }
 
     // Continue loop
     if (g.running && !g.paused) {
