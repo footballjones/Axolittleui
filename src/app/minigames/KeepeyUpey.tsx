@@ -46,6 +46,7 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const lastTouchTimeRef = useRef<number>(0);
   const gameStateRef = useRef<{
     axo: { x: number; y: number; vy: number; size: number };
     obstacles: Obstacle[];
@@ -509,9 +510,18 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
           height={CANVAS_H}
           className="max-w-full max-h-full w-full h-full object-contain"
           style={{ touchAction: 'none' }}
-          onClick={bounce}
+          onClick={(e) => {
+            // Prevent click if touch event happened recently (within 300ms)
+            // This prevents double-firing on mobile where both touch and click fire
+            if (Date.now() - lastTouchTimeRef.current < 300) {
+              e.preventDefault();
+              return;
+            }
+            bounce();
+          }}
           onTouchStart={(e) => {
             e.preventDefault();
+            lastTouchTimeRef.current = Date.now();
             bounce();
           }}
         />
