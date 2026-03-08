@@ -104,6 +104,7 @@ export default function App() {
     handleEatFood,
     handlePlay,
     handleClean,
+    handleRemovePoop,
     handleWaterChange,
     handlePurchase,
     handleEquipDecoration,
@@ -127,6 +128,11 @@ export default function App() {
   const [showScrollHint, setShowScrollHint] = useState(true);
   const hasInitiallyScrolled = useRef(false);
   const isCenteringScroll = useRef(false);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const cleaningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPoopGenTimeRef = useRef<number>(Date.now());
+  const [isCleaning, setIsCleaning] = useState(false);
+  const cleaningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Center aquarium scroll on first load
   useEffect(() => {
@@ -155,6 +161,9 @@ export default function App() {
       }
       if (loaded.maxEnergy === undefined) {
         loaded.maxEnergy = GAME_CONFIG.energyMax;
+      }
+      if (loaded.poops === undefined) {
+        loaded.poops = [];
       }
       if (loaded.lastEnergyUpdate === undefined) {
         loaded.lastEnergyUpdate = Date.now();
@@ -187,6 +196,8 @@ export default function App() {
       loaded.lastEnergyUpdate = now;
       
       setGameState(loaded);
+      // Initialize poop generation timer
+      lastPoopGenTimeRef.current = Date.now();
       
       // Check for daily login bonus on app open
       const today = getTodayDateString();
@@ -243,17 +254,50 @@ export default function App() {
         // Only floor when storing (for display), but track fractional progress via timestamp
         // This ensures energy accumulates properly even with small increments
 
+        // Generate poops based on cleanliness and time
+        const poops = prev.poops || [];
+        const cleanliness = updated.stats.cleanliness;
+        const timeSinceLastPoop = now - lastPoopGenTimeRef.current;
+        
+        // Generate poop every 30-60 seconds when cleanliness is low
+        // More frequent when cleanliness is very low
+        const poopInterval = cleanliness < 30 ? 30000 : cleanliness < 50 ? 45000 : 60000;
+        
+        let newPoops = [...poops];
+        if (timeSinceLastPoop > poopInterval && cleanliness < 80) {
+          // Generate 1-2 poops
+          const poopCount = Math.random() < 0.7 ? 1 : 2;
+          for (let i = 0; i < poopCount; i++) {
+            newPoops.push({
+              id: `poop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              x: Math.random() * 70 + 15, // 15-85% from left
+              y: Math.random() * 40 + 50, // 50-90% from top (bottom area)
+              createdAt: now,
+            });
+          }
+          lastPoopGenTimeRef.current = now;
+        }
+        
+        // Remove old poops (older than 5 minutes)
+        newPoops = newPoops.filter(poop => now - poop.createdAt < 300000);
+
         return {
           ...stateWithUpdatedShrimp,
           axolotl: updated,
           energy: Math.floor(newEnergy), // Floor only for display/storage
           maxEnergy: maxEnergy,
           lastEnergyUpdate: now, // Update timestamp to track fractional progress
+          poops: newPoops,
         };
       });
     }, 5000); // Update every 5 seconds
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (cleaningTimeoutRef.current) {
+        clearTimeout(cleaningTimeoutRef.current);
+      }
+    };
   }, [gameState?.axolotl?.id]);
 
   const handleStart = useCallback((name: string) => {
@@ -261,7 +305,9 @@ export default function App() {
     setGameState(prev => ({
       ...(prev || getInitialGameState()),
       axolotl: newAxolotl,
+      poops: prev?.poops || [],
     }));
+    lastPoopGenTimeRef.current = Date.now();
   }, []);
 
   const handleSpinWheel = useCallback((reward: { type: 'coins' | 'opals'; amount: number }) => {
@@ -991,6 +1037,25 @@ export default function App() {
                       <AquariumBackground
                         background={customization.background}
                         decorations={customization.decorations}
+                        poops={gameState.poops || []}
+                        isCleaning={isCleaning}
+                        onPoopClick={(poopId) => {
+                          handleRemovePoop(poopId);
+                          // Reset cleaning timeout when poop is clicked
+                          if (cleaningTimeoutRef.current) {
+                            clearTimeout(cleaningTimeoutRef.current);
+                          }
+                          // Only hide if no poops left
+                          const remainingPoops = (gameState.poops || []).filter(p => p.id !== poopId);
+                          if (remainingPoops.length === 0) {
+                            setIsCleaning(false);
+                          } else {
+                            // Extend timeout by 3 more seconds
+                            cleaningTimeoutRef.current = setTimeout(() => {
+                              setIsCleaning(false);
+                            }, 3000);
+                          }
+                        }}
                       />
                       {/* Food Items */}
                       {(gameState.foodItems || []).map(food => (
@@ -1070,7 +1135,17 @@ export default function App() {
                       <ActionButtons
                         onFeed={handleFeed}
                         onPlay={handlePlay}
-                        onClean={handleClean}
+                        onClean={() => {
+                          setIsCleaning(true);
+                          // Clear existing timeout
+                          if (cleaningTimeoutRef.current) {
+                            clearTimeout(cleaningTimeoutRef.current);
+                          }
+                          // Auto-hide after 3 seconds
+                          cleaningTimeoutRef.current = setTimeout(() => {
+                            setIsCleaning(false);
+                          }, 3000);
+                        }}
                         onWaterChange={handleWaterChange}
                         onRebirth={() => setActiveModal('rebirth')}
                         canRebirth={showRebirthButton}

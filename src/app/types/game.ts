@@ -71,6 +71,7 @@ export interface GameState {
   lineage: Axolotl[]; // previous generations
   friends: Friend[];
   foodItems: FoodItem[];
+  poops: PoopItem[];
   incubatorEgg: Egg | null; // 1 slot for active hatching
   nurseryEggs: Egg[]; // Storage: 6 open, 18 locked (purchase with Opals)
   filterTier?: string; // 'filter-basic' | 'filter-advanced' | 'filter-premium'
@@ -99,6 +100,13 @@ export interface BreedingRequest {
 }
 
 export interface FoodItem {
+  id: string;
+  x: number; // position as percentage (0-100)
+  y: number; // position as percentage (0-100)
+  createdAt: number;
+}
+
+export interface PoopItem {
   id: string;
   x: number; // position as percentage (0-100)
   y: number; // position as percentage (0-100)

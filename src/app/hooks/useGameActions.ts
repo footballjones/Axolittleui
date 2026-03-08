@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { GameState, Axolotl, Friend, FoodItem } from '../types/game';
+import { GameState, Axolotl, Friend, FoodItem, PoopItem } from '../types/game';
 import { 
   feedAxolotl, 
   playWithAxolotl,
@@ -95,20 +95,34 @@ export function useGameActions({
   }, []);
 
   const handleClean = useCallback(() => {
+    // Clean action now just triggers cleaning mode
+    // Actual cleaning happens when poops are clicked
+    // This is handled in App.tsx with cleaning mode state
+  }, []);
+
+  const handleRemovePoop = useCallback((poopId: string) => {
     setGameState(prev => {
       if (!prev?.axolotl) return prev;
+      
+      const updatedPoops = (prev.poops || []).filter(p => p.id !== poopId);
+      const poopCount = (prev.poops || []).length;
+      const removedCount = poopCount - updatedPoops.length;
+      
+      // Increase cleanliness based on poops removed
+      const cleanlinessIncrease = Math.min(35, removedCount * 10);
       
       const updated = {
         ...prev.axolotl,
         stats: {
           ...prev.axolotl.stats,
-          cleanliness: Math.min(100, prev.axolotl.stats.cleanliness + 35),
+          cleanliness: Math.min(100, prev.axolotl.stats.cleanliness + cleanlinessIncrease),
         },
       };
       
       return {
         ...prev,
         axolotl: updated,
+        poops: updatedPoops,
       };
     });
   }, []);
@@ -664,6 +678,7 @@ export function useGameActions({
     handleEatFood,
     handlePlay,
     handleClean,
+    handleRemovePoop,
     handleWaterChange,
     handlePurchase,
     handleEquipDecoration,
