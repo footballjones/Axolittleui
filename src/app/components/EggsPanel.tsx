@@ -186,7 +186,7 @@ export function EggsPanel({
 
         {/* Incubator section - single slot at top */}
         <div
-          className="relative rounded-3xl overflow-hidden p-4 mb-3"
+          className="relative rounded-3xl overflow-hidden p-5 mb-3"
           style={{
             background: 'linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(245,240,255,0.78) 50%, rgba(254,243,199,0.65) 100%)',
             border: '1.5px solid rgba(216,180,254,0.5)',
@@ -203,13 +203,16 @@ export function EggsPanel({
           {/* Warm glow underlay */}
           <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 80%, rgba(251,191,36,0.08) 0%, transparent 65%)' }} />
 
-          {/* Single incubator slot */}
-          <div className="flex justify-center">
-            <EggSlot
-              slotIndex={0}
-              egg={incubatorDisplayEgg}
-              onSelect={() => incubatorDisplayEgg && setSelectedEgg(incubatorDisplayEgg)}
-            />
+          {/* Single incubator slot - larger size */}
+          <div className="flex justify-center px-2">
+            <div className="w-full max-w-[120px]">
+              <EggSlot
+                slotIndex={0}
+                egg={incubatorDisplayEgg}
+                onSelect={() => incubatorDisplayEgg && setSelectedEgg(incubatorDisplayEgg)}
+                isIncubator={true}
+              />
+            </div>
           </div>
         </div>
 
@@ -515,19 +518,21 @@ export function EggsPanel({
 }
 
 /* ── Individual egg slot ── */
-function EggSlot({ slotIndex, egg, onSelect }: { slotIndex: number; egg: DisplayEgg | null; onSelect: () => void }) {
+function EggSlot({ slotIndex, egg, onSelect, isIncubator = false }: { slotIndex: number; egg: DisplayEgg | null; onSelect: () => void; isIncubator?: boolean }) {
   const isReady = egg?.hatchesIn === 'Ready!';
+
+  const slotSize = isIncubator ? 'w-full aspect-square' : 'aspect-square';
 
   if (!egg) {
     return (
       <div
-        className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 opacity-40"
+        className={`${slotSize} rounded-2xl flex flex-col items-center justify-center gap-1 opacity-40`}
         style={{
           background: 'rgba(255,255,255,0.35)',
           border: '1.5px dashed rgba(168,85,247,0.25)',
         }}
       >
-        <span className="text-[1.4rem] grayscale opacity-50">🥚</span>
+        <span className={`${isIncubator ? 'text-[2rem]' : 'text-[1.4rem]'} grayscale opacity-50`}>🥚</span>
         <span className="text-[8px] text-violet-400/60 font-bold tracking-wider uppercase">Empty</span>
       </div>
     );
@@ -535,7 +540,7 @@ function EggSlot({ slotIndex, egg, onSelect }: { slotIndex: number; egg: Display
 
   return (
     <motion.button
-      className="relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 overflow-hidden"
+      className={`relative ${slotSize} rounded-2xl flex flex-col items-center justify-center gap-1 overflow-hidden`}
       style={{
         background: `radial-gradient(ellipse at 50% 80%, ${egg.rarityColor} 0%, rgba(255,255,255,0.55) 100%)`,
         border: `1.5px solid ${egg.rarityBorder}`,
@@ -561,7 +566,7 @@ function EggSlot({ slotIndex, egg, onSelect }: { slotIndex: number; egg: Display
 
       {/* Egg */}
       <motion.span
-        className="text-[2rem] leading-none relative z-10 drop-shadow-sm"
+        className={`${isIncubator ? 'text-[3rem]' : 'text-[2rem]'} leading-none relative z-10 drop-shadow-sm`}
         animate={
           isReady
             ? { scale: [1, 1.1, 1], rotate: [0, -6, 6, -4, 4, 0] }
