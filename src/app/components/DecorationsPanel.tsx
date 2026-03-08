@@ -109,12 +109,11 @@ export function DecorationsPanel({
 
       {/* Content */}
       <div
-        className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-2"
+        className="flex-1 overflow-y-auto px-4 pt-4 space-y-2"
         style={{ 
           WebkitOverflowScrolling: 'touch', 
           touchAction: 'pan-y',
-          overscrollBehavior: 'contain',
-          paddingBottom: '2rem',
+          overscrollBehaviorY: 'none',
         }}
       >
         {decorationsTab === 'store' ? (
@@ -378,6 +377,8 @@ export function DecorationsPanel({
             ));
           })()
         )}
+        {/* Bottom spacer to prevent scroll bounce */}
+        <div style={{ height: '3rem', minHeight: '3rem', flexShrink: 0 }} />
       </div>
     </motion.div>
   );
