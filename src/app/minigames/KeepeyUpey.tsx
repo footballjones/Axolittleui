@@ -511,9 +511,9 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
           className="max-w-full max-h-full w-full h-full object-contain"
           style={{ touchAction: 'none' }}
           onClick={(e) => {
-            // Prevent click if touch event happened recently (within 300ms)
-            // This prevents double-firing on mobile where both touch and click fire
-            if (Date.now() - lastTouchTimeRef.current < 300) {
+            // Ignore click if it happened shortly after a touch event (mobile double-tap prevention)
+            const now = performance.now();
+            if (now - lastTouchTimeRef.current < 300) {
               e.preventDefault();
               return;
             }
@@ -521,7 +521,7 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
           }}
           onTouchStart={(e) => {
             e.preventDefault();
-            lastTouchTimeRef.current = Date.now();
+            lastTouchTimeRef.current = performance.now();
             bounce();
           }}
         />
