@@ -81,20 +81,13 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     bird.vy += GRAVITY;
     bird.y += bird.vy;
 
-    // Spawn hooks
+    // Spawn hooks - simplified logic
     if (now - g.lastHookTime > HOOK_INTERVAL) {
       const lastHook = hooks[hooks.length - 1];
       if (!lastHook || lastHook.x < CANVAS_W - 200) {
-        let gapY = 80 + Math.random() * (CANVAS_H - 200);
-        if (lastHook) {
-          const minDist = HOOK_GAP + 100;
-          if (Math.abs(gapY - lastHook.gapY) < minDist) {
-            gapY = gapY < lastHook.gapY 
-              ? Math.max(80, lastHook.gapY - minDist)
-              : Math.min(CANVAS_H - 120, lastHook.gapY + minDist);
-          }
-        }
-        // Reuse hook object if available, otherwise create new
+        // Simple random gap - no complex distance calculations
+        const gapY = 80 + Math.random() * (CANVAS_H - 200);
+        // Reuse hook object if available
         let hook = hooks.find(h => h.x < -100);
         if (hook) {
           hook.x = CANVAS_W;
@@ -116,27 +109,26 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     const bTop = by - bs;
     const bBottom = by + bs;
 
-    // Keep only 5 hooks max - absolute minimum
-    if (hooks.length > 5) {
-      hooks.shift();
-    }
-    
+    // Process hooks - simplified loop
     ctx.fillStyle = '#666';
     
-    for (let i = hooks.length - 1; i >= 0; i--) {
+    let activeHooks = 0;
+    for (let i = 0; i < hooks.length; i++) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
 
-      // Don't remove hooks, just mark as off-screen (reuse them)
+      // Skip off-screen hooks
       if (h.x + h.width < -10) {
-        continue; // Skip drawing but keep in array for reuse
+        continue;
       }
 
+      // Only process visible hooks
       if (h.x < CANVAS_W && h.x + h.width > 0) {
+        activeHooks++;
         const top = h.gapY - h.gap / 2;
         const bottom = h.gapY + h.gap / 2;
         
-        // Draw - minimal operations
+        // Draw
         ctx.fillRect(h.x, 0, h.width, top);
         ctx.fillRect(h.x, bottom, h.width, CANVAS_H - bottom);
 
@@ -146,27 +138,28 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
           g.score += 1;
         }
 
-        // Collision - simplified check
-        if (h.x < bRight + 30 && h.x + h.width > bLeft - 30) {
-          if (bRight > h.x && bLeft < h.x + h.width && (bTop < top || bBottom > bottom)) {
-            g.running = false;
-            g.frameId = null;
-            setScore(g.score);
-            const rewards = g.hadEnergy 
-              ? calculateRewards('fish-hooks', g.score)
-              : { tier: 'normal', xp: 0, coins: 0, opals: undefined };
-            setFinalRewards({
-              tier: rewards.tier,
-              xp: rewards.xp,
-              coins: rewards.coins,
-              opals: rewards.opals,
-            });
-            setGameEnded(true);
-            setShowOverlay(true);
-            return;
-          }
+        // Collision - single simplified check
+        if (h.x < bRight && h.x + h.width > bLeft && (bTop < top || bBottom > bottom)) {
+          g.running = false;
+          g.frameId = null;
+          setScore(g.score);
+          const rewards = g.hadEnergy 
+            ? calculateRewards('fish-hooks', g.score)
+            : { tier: 'normal', xp: 0, coins: 0, opals: undefined };
+          setFinalRewards({
+            tier: rewards.tier,
+            xp: rewards.xp,
+            coins: rewards.coins,
+            opals: rewards.opals,
+          });
+          setGameEnded(true);
+          setShowOverlay(true);
+          return;
         }
       }
+      
+      // Limit active hooks
+      if (activeHooks >= 4) break;
     }
 
     // Boundary check
