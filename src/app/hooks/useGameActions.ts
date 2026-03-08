@@ -520,9 +520,17 @@ export function useGameActions({
       const newCoins = hadEnergy ? prev.coins + result.coins : prev.coins;
       const newOpals = hadEnergy && result.opals ? (prev.opals || 0) + result.opals : prev.opals;
       
+      // Playing mini games makes the axolotl hungry - reduce hunger by 15 points
+      const hungerReduction = 15;
+      const newHunger = Math.max(0, prev.axolotl.stats.hunger - hungerReduction);
+      
       const updatedAxolotl = {
         ...prev.axolotl,
         experience: newXP,
+        stats: {
+          ...prev.axolotl.stats,
+          hunger: newHunger,
+        },
       };
       const evolvedAxolotl = checkEvolution(updatedAxolotl);
       
