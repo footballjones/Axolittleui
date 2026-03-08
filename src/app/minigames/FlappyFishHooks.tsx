@@ -235,22 +235,32 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     };
   }, []);
 
-  // Start/stop loop
+  // Start/stop loop - use ref to avoid dependency issues
+  const startLoopRef = useRef(false);
+  startLoopRef.current = gameRef.current.running && !gameRef.current.paused && !showOverlay && !gameEnded;
+  
   useEffect(() => {
     const g = gameRef.current;
-    if (g.running && !g.paused && g.ctx && !showOverlay && !g.frameId) {
-      g.frameId = requestAnimationFrame(gameLoopRef.current!);
-    } else if ((!g.running || g.paused || showOverlay) && g.frameId) {
-      cancelAnimationFrame(g.frameId);
-      g.frameId = null;
-    }
+    const checkLoop = () => {
+      if (startLoopRef.current && g.ctx && !g.frameId) {
+        g.frameId = requestAnimationFrame(gameLoopRef.current!);
+      } else if (!startLoopRef.current && g.frameId) {
+        cancelAnimationFrame(g.frameId);
+        g.frameId = null;
+      }
+    };
+    
+    checkLoop();
+    const interval = setInterval(checkLoop, 100); // Check every 100ms instead of on every render
+    
     return () => {
+      clearInterval(interval);
       if (g.frameId) {
         cancelAnimationFrame(g.frameId);
         g.frameId = null;
       }
     };
-  }, [showOverlay, gameEnded]);
+  }, []); // Empty deps - loop manages itself
 
   const startGame = () => {
     const g = gameRef.current;
