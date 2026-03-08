@@ -3,7 +3,7 @@
  * One free spin per day with coin/opal rewards
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { canSpinToday } from '../utils/dailySystem';
@@ -49,9 +49,32 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
   
   const canSpin = canSpinToday(lastSpinDate);
 
-  // Calculate total size and angles
-  const totalSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.size, 0);
-  const anglePerUnit = 360 / totalSize;
+  // Calculate wheel geometry once
+  const wheelGeometry = useMemo(() => {
+    const totalSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.size, 0);
+    const anglePerUnit = 360 / totalSize;
+    
+    // Pre-calculate section angles
+    const sections = WHEEL_SECTIONS.map((section, index) => {
+      let startAngle = 0;
+      for (let i = 0; i < index; i++) {
+        startAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
+      }
+      const sectionAngle = section.size * anglePerUnit;
+      const centerAngle = startAngle + sectionAngle / 2;
+      const endAngle = startAngle + sectionAngle;
+      
+      return {
+        ...section,
+        startAngle,
+        centerAngle,
+        endAngle,
+        sectionAngle,
+      };
+    });
+    
+    return { totalSize, anglePerUnit, sections };
+  }, []);
 
   const handleSpin = useCallback(() => {
     if (isSpinning || !canSpin) return;
@@ -60,20 +83,14 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
     setShowResult(false);
     setSelectedReward(null);
 
-    // Pick random reward based on weights
+    // Step 1: Pick random reward based on weights
     const randomIndex = Math.floor(Math.random() * WEIGHTED_SECTIONS.length);
     const reward = WEIGHTED_SECTIONS[randomIndex];
     
-    // Find which section this reward corresponds to
-    // Use findLastIndex to get the LAST matching section if there are duplicates
-    // (though there shouldn't be, but this ensures we get the right one)
-    let targetSectionIndex = -1;
-    for (let i = WHEEL_SECTIONS.length - 1; i >= 0; i--) {
-      if (WHEEL_SECTIONS[i].value === reward.value && WHEEL_SECTIONS[i].type === reward.type) {
-        targetSectionIndex = i;
-        break;
-      }
-    }
+    // Step 2: Find the FIRST section that matches this reward
+    const targetSectionIndex = WHEEL_SECTIONS.findIndex(
+      s => s.value === reward.value && s.type === reward.type
+    );
     
     if (targetSectionIndex === -1) {
       console.error('Could not find section for reward', reward);
@@ -81,53 +98,36 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
       return;
     }
     
-    // Verify we found the correct section
-    const foundSection = WHEEL_SECTIONS[targetSectionIndex];
-    if (foundSection.value !== reward.value || foundSection.type !== reward.type) {
-      console.error('Section mismatch!', { reward, foundSection, targetSectionIndex });
-      setIsSpinning(false);
-      return;
-    }
+    // Step 3: Get the center angle of the target section
+    const targetSection = wheelGeometry.sections[targetSectionIndex];
+    const sectionCenterAngle = targetSection.centerAngle;
     
-    // Calculate the center angle of the target section (in degrees, starting from top)
-    // SVG is rotated -90deg, so first section starts at top (0deg in our coordinate system)
-    // We need to calculate where the center of the target section is
-    let cumulativeAngle = 0;
-    for (let i = 0; i < targetSectionIndex; i++) {
-      cumulativeAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
-    }
-    const sectionSize = WHEEL_SECTIONS[targetSectionIndex].size * anglePerUnit;
-    const sectionCenterAngle = cumulativeAngle + sectionSize / 2;
+    // Step 4: Calculate rotation needed
+    // The pointer is at the top (0 degrees)
+    // The section center is at sectionCenterAngle degrees
+    // To align section center with pointer, we need: rotation = 360 - sectionCenterAngle
+    // Add full spins for dramatic effect (5-8 spins)
+    const fullSpins = 5 + Math.random() * 3;
+    const baseRotation = 360 - sectionCenterAngle;
+    const finalRotation = rotation + (fullSpins * 360) + baseRotation;
     
-    // Pointer is at top (0 degrees in our coordinate system after SVG -90deg rotation)
-    // The wheel rotates clockwise (positive rotation)
-    // We want: sectionCenterAngle + rotation = 0 (mod 360) to align with pointer
-    // So: rotation = 360 - sectionCenterAngle (mod 360)
-    // Add multiple full spins for effect (5-8 spins for more dramatic effect)
-    const fullSpins = 5 + Math.random() * 3; // 5-8 full rotations
-    // Calculate final rotation: full spins + adjustment to align section center with pointer
-    // Use relative rotation from current position for smooth animation
-    const currentRotation = rotation % 360;
-    const targetRotation = (360 - sectionCenterAngle) % 360;
-    const rotationDiff = targetRotation - currentRotation;
-    const finalRotation = rotation + fullSpins * 360 + (rotationDiff < 0 ? rotationDiff + 360 : rotationDiff);
-    
-    // Store the expected reward for verification
+    // Store the expected reward
     const expectedReward = { type: reward.type, amount: reward.value };
     
     setRotation(finalRotation);
 
-    // Show result after animation
+    // Show result after animation completes
     setTimeout(() => {
       setIsSpinning(false);
-      // Use the expected reward to ensure consistency
       setSelectedReward(expectedReward);
       setShowResult(true);
       onSpin(expectedReward);
     }, 4000);
-  }, [isSpinning, canSpin, onSpin, anglePerUnit]);
+  }, [isSpinning, canSpin, onSpin, rotation, wheelGeometry]);
 
   if (!isOpen) return null;
+
+  const { sections } = wheelGeometry;
 
   return (
     <AnimatePresence>
@@ -227,12 +227,10 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                     {/* Spinning wheel */}
                     <motion.div
                       className="w-full h-full"
-                      animate={{ 
-                        rotate: rotation,
-                      }}
+                      animate={{ rotate: rotation }}
                       transition={{ 
                         duration: 4,
-                        ease: [0.43, 0.13, 0.23, 0.96], // Custom easing: fast start, slow end (ease-out-cubic)
+                        ease: [0.43, 0.13, 0.23, 0.96], // Fast start, slow end
                       }}
                       style={{ 
                         transformOrigin: 'center',
@@ -240,7 +238,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         transition: 'filter 0.3s ease-out',
                       }}
                     >
-                      {/* SVG wheel for precise rendering - rotated so first section starts at top */}
+                      {/* SVG wheel - rotated -90deg so first section starts at top */}
                       <svg width="100%" height="100%" viewBox="0 0 300 300" style={{ transform: 'rotate(-90deg)' }}>
                         <defs>
                           <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -255,18 +253,11 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                           </linearGradient>
                         </defs>
                         
-                        {WHEEL_SECTIONS.map((section, index) => {
-                          // Calculate angles in our coordinate system (starting from top after -90deg rotation)
-                          let startAngle = 0;
-                          for (let i = 0; i < index; i++) {
-                            startAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
-                          }
-                          const sectionAngle = section.size * anglePerUnit;
-                          const endAngle = startAngle + sectionAngle;
-                          
-                          // Convert to radians for SVG (SVG 0deg is right, but we rotated -90deg so 0deg is now top)
-                          const startRad = ((startAngle - 90) * Math.PI) / 180;
-                          const endRad = ((endAngle - 90) * Math.PI) / 180;
+                        {sections.map((section, index) => {
+                          // Convert angles to radians for SVG
+                          // SVG 0deg is right, but we rotated -90deg so 0deg is now top
+                          const startRad = ((section.startAngle - 90) * Math.PI) / 180;
+                          const endRad = ((section.endAngle - 90) * Math.PI) / 180;
                           
                           const centerX = 150;
                           const centerY = 150;
@@ -277,7 +268,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                           const x2 = centerX + radius * Math.cos(endRad);
                           const y2 = centerY + radius * Math.sin(endRad);
                           
-                          const largeArc = sectionAngle > 180 ? 1 : 0;
+                          const largeArc = section.sectionAngle > 180 ? 1 : 0;
                           
                           const pathData = [
                             `M ${centerX} ${centerY}`,
@@ -299,17 +290,8 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         })}
                       </svg>
                       
-                      {/* Labels - positioned relative to wheel rotation */}
-                      {WHEEL_SECTIONS.map((section, index) => {
-                        let startAngle = 0;
-                        for (let i = 0; i < index; i++) {
-                          startAngle += WHEEL_SECTIONS[i].size * anglePerUnit;
-                        }
-                        const sectionAngle = section.size * anglePerUnit;
-                        const centerAngle = startAngle + sectionAngle / 2;
-                        
-                        // SVG is rotated -90deg, so we need to adjust for label positioning
-                        // Labels rotate with the wheel, so we use centerAngle directly
+                      {/* Labels - positioned at section centers */}
+                      {sections.map((section, index) => {
                         const radius = 110;
                         
                         return (
@@ -317,7 +299,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                             key={`label-${index}`}
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                             style={{
-                              transform: `rotate(${centerAngle}deg) translateY(-${radius}px) rotate(${-centerAngle}deg)`,
+                              transform: `rotate(${section.centerAngle}deg) translateY(-${radius}px) rotate(${-section.centerAngle}deg)`,
                             }}
                           >
                             <span 
