@@ -49,12 +49,12 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
   
   const canSpin = canSpinToday(lastSpinDate);
 
-  // Calculate wheel geometry once
+  // Calculate wheel geometry once - all angles in standard coordinate system (0 = top, clockwise positive)
   const wheelGeometry = useMemo(() => {
     const totalSize = WHEEL_SECTIONS.reduce((sum, s) => sum + s.size, 0);
     const anglePerUnit = 360 / totalSize;
     
-    // Pre-calculate section angles
+    // Pre-calculate section angles in standard coordinates (0 = top)
     const sections = WHEEL_SECTIONS.map((section, index) => {
       let startAngle = 0;
       for (let i = 0; i < index; i++) {
@@ -66,9 +66,9 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
       
       return {
         ...section,
-        startAngle,
-        centerAngle,
-        endAngle,
+        startAngle,      // In standard coords (0 = top)
+        centerAngle,     // In standard coords (0 = top)
+        endAngle,        // In standard coords (0 = top)
         sectionAngle,
       };
     });
@@ -98,15 +98,15 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
       return;
     }
     
-    // Step 3: Get the center angle of the target section
+    // Step 3: Get the center angle of the target section (in standard coords where 0 = top)
     const targetSection = wheelGeometry.sections[targetSectionIndex];
     const sectionCenterAngle = targetSection.centerAngle;
     
     // Step 4: Calculate rotation needed
-    // The pointer is at the top (0 degrees)
-    // The section center is at sectionCenterAngle degrees
-    // To align section center with pointer, we need: rotation = 360 - sectionCenterAngle
-    // Add full spins for dramatic effect (5-8 spins)
+    // Pointer is at top (0 degrees in standard coords)
+    // Section center is at sectionCenterAngle degrees
+    // To align: we need to rotate the wheel so section center moves to 0
+    // Since wheel rotates clockwise: rotation = 360 - sectionCenterAngle
     const fullSpins = 5 + Math.random() * 3;
     const baseRotation = 360 - sectionCenterAngle;
     const finalRotation = rotation + (fullSpins * 360) + baseRotation;
@@ -238,7 +238,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         transition: 'filter 0.3s ease-out',
                       }}
                     >
-                      {/* SVG wheel - rotated -90deg so first section starts at top */}
+                      {/* SVG wheel - rotated -90deg so first section (0deg) appears at top */}
                       <svg width="100%" height="100%" viewBox="0 0 300 300" style={{ transform: 'rotate(-90deg)' }}>
                         <defs>
                           <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -254,10 +254,15 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         </defs>
                         
                         {sections.map((section, index) => {
-                          // Convert angles to radians for SVG
-                          // SVG 0deg is right, but we rotated -90deg so 0deg is now top
-                          const startRad = ((section.startAngle - 90) * Math.PI) / 180;
-                          const endRad = ((section.endAngle - 90) * Math.PI) / 180;
+                          // Convert standard angles (0 = top) to SVG angles (0 = right, then -90deg rotation makes 0 = top)
+                          // In SVG: 0deg = right, 90deg = bottom, 180deg = left, 270deg = top
+                          // After -90deg rotation: our 0deg (top) becomes SVG's 270deg (which is -90deg in SVG coords)
+                          // So: SVG angle = standard angle - 90
+                          const svgStartAngle = section.startAngle - 90;
+                          const svgEndAngle = section.endAngle - 90;
+                          
+                          const startRad = (svgStartAngle * Math.PI) / 180;
+                          const endRad = (svgEndAngle * Math.PI) / 180;
                           
                           const centerX = 150;
                           const centerY = 150;
@@ -290,7 +295,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                         })}
                       </svg>
                       
-                      {/* Labels - positioned at section centers */}
+                      {/* Labels - positioned at section centers using standard angles */}
                       {sections.map((section, index) => {
                         const radius = 110;
                         
@@ -299,6 +304,7 @@ export function SpinWheel({ isOpen, onClose, onSpin, lastSpinDate, coins, opals 
                             key={`label-${index}`}
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                             style={{
+                              // Rotate to section center angle, move out by radius, then rotate back to keep text upright
                               transform: `rotate(${section.centerAngle}deg) translateY(-${radius}px) rotate(${-section.centerAngle}deg)`,
                             }}
                           >
