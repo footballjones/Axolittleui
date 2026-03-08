@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Volume2, VolumeX, Bell, BellOff, RotateCcw, Trash2, Moon, Sun } from 'lucide-react';
+import { X, Volume2, VolumeX, Bell, BellOff, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SettingsModalProps {
@@ -7,27 +7,27 @@ interface SettingsModalProps {
   onResetGame: () => void;
 }
 
+// Move ToggleSwitch outside component to prevent recreation on every render
+const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+  <button
+    onClick={onToggle}
+    className={`relative w-11 h-6 rounded-full transition-colors ${
+      enabled ? 'bg-gradient-to-r from-cyan-400 to-blue-500' : 'bg-slate-600'
+    }`}
+  >
+    <motion.div
+      className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md"
+      animate={{ left: enabled ? 20 : 2 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+    />
+  </button>
+);
+
 export function SettingsModal({ onClose, onResetGame }: SettingsModalProps) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-
-  const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
-    <button
-      onClick={onToggle}
-      className={`relative w-11 h-6 rounded-full transition-colors ${
-        enabled ? 'bg-gradient-to-r from-cyan-400 to-blue-500' : 'bg-slate-600'
-      }`}
-    >
-      <motion.div
-        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md"
-        animate={{ left: enabled ? 20 : 2 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      />
-    </button>
-  );
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
@@ -119,18 +119,6 @@ export function SettingsModal({ onClose, onResetGame }: SettingsModalProps) {
                     <span className="text-white text-sm">Notifications</span>
                   </div>
                   <ToggleSwitch enabled={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} />
-                </div>
-
-                <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    {darkMode ? (
-                      <Moon className="w-4 h-4 text-cyan-400" />
-                    ) : (
-                      <Sun className="w-4 h-4 text-amber-400" />
-                    )}
-                    <span className="text-white text-sm">Dark Mode</span>
-                  </div>
-                  <ToggleSwitch enabled={darkMode} onToggle={() => setDarkMode(!darkMode)} />
                 </div>
               </div>
             </div>
