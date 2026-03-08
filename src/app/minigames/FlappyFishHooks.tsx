@@ -62,9 +62,19 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   });
 
   // Pure vanilla JS game loop - no React dependencies
-  const gameLoop = () => {
+  // Use useRef to store the function to prevent recreation
+  const gameLoopRef = useRef<() => void>();
+  
+  gameLoopRef.current = () => {
     const game = gameRef.current;
-    if (!game.isPlaying || game.isPaused || !game.ctx) return;
+    if (!game.isPlaying || game.isPaused || !game.ctx || game.animationId === null) {
+      // Ensure we don't schedule more frames if game ended
+      if (game.animationId !== null) {
+        cancelAnimationFrame(game.animationId);
+        game.animationId = null;
+      }
+      return;
+    }
 
     const ctx = game.ctx;
     const bird = game.bird;
@@ -110,6 +120,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     // Draw hooks while processing - single pass
     ctx.fillStyle = '#666';
     
+    // Limit hooks array size to prevent memory issues (max 20 hooks)
+    if (hooks.length > 20) {
+      hooks.splice(0, hooks.length - 20);
+    }
+    
     for (let i = hooks.length - 1; i >= 0; i--) {
       const h = hooks[i];
       h.x -= HOOK_SPEED;
@@ -152,6 +167,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     }
 
     if (shouldEnd || bBottom > CANVAS_H || bTop < 0) {
+      // Cancel current frame before ending
+      if (game.animationId !== null) {
+        cancelAnimationFrame(game.animationId);
+        game.animationId = null;
+      }
       if (game.onGameEnd) game.onGameEnd();
       return;
     }
@@ -183,7 +203,12 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     ctx.arc(bx + 10, by, 5, -0.3, Math.PI * 0.3);
     ctx.stroke();
 
-    game.animationId = requestAnimationFrame(gameLoop);
+    // Only schedule next frame if still playing and animationId is set
+    if (game.isPlaying && !game.isPaused && game.animationId !== null) {
+      game.animationId = requestAnimationFrame(gameLoopRef.current!);
+    } else {
+      game.animationId = null;
+    }
   };
 
   // Initialize canvas
@@ -203,7 +228,11 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     gameRef.current.onGameEnd = () => {
       const game = gameRef.current;
       game.isPlaying = false;
-      game.animationId = null;
+      // Cancel any pending animation frame
+      if (game.animationId !== null) {
+        cancelAnimationFrame(game.animationId);
+        game.animationId = null;
+      }
       
       const finalScore = game.score;
       setScore(finalScore); // Sync final score
@@ -247,8 +276,8 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
   useEffect(() => {
     const game = gameRef.current;
     if (game.isPlaying && !game.isPaused && game.ctx) {
-      if (!game.animationId) {
-        game.animationId = requestAnimationFrame(gameLoop);
+      if (!game.animationId && gameLoopRef.current) {
+        game.animationId = requestAnimationFrame(gameLoopRef.current);
       }
     } else {
       if (game.animationId) {
@@ -274,9 +303,13 @@ export function FlappyFishHooks({ onEnd, energy }: MiniGameProps) {
     setGameEnded(false);
     setFinalRewards(null);
     
-    // Start loop
-    if (game.ctx && !game.animationId) {
-      game.animationId = requestAnimationFrame(gameLoop);
+    // Start loop - ensure previous frame is cancelled first
+    if (game.animationId) {
+      cancelAnimationFrame(game.animationId);
+      game.animationId = null;
+    }
+    if (game.ctx && gameLoopRef.current) {
+      game.animationId = requestAnimationFrame(gameLoopRef.current);
     }
   };
 
