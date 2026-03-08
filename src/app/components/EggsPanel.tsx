@@ -99,31 +99,29 @@ export function EggsPanel({
   const [showHatchModal, setShowHatchModal] = useState(false);
   const [eggToHatch, setEggToHatch] = useState<Egg | null>(null);
 
-  // Convert real eggs to display format
-  const displayEggs = useMemo(() => {
-    const allEggs: DisplayEgg[] = [];
-    
-    // Add incubator egg first if present
-    if (incubatorEgg) {
-      const style = getRarityStyle(incubatorEgg.rarity);
-      allEggs.push({
-        id: incubatorEgg.id,
-        name: `${incubatorEgg.rarity} Egg`,
-        color: incubatorEgg.color,
-        generation: incubatorEgg.generation,
-        parentName: `Gen ${incubatorEgg.generation - 1}`,
-        hatchesIn: formatTimeRemaining(incubatorEgg.incubationEndsAt),
-        emoji: style.emoji,
-        rarity: incubatorEgg.rarity,
-        ...style,
-        egg: incubatorEgg,
-      });
-    }
-    
-    // Add nursery eggs
-    nurseryEggs.forEach(egg => {
+  // Convert incubator egg to display format
+  const incubatorDisplayEgg = useMemo(() => {
+    if (!incubatorEgg) return null;
+    const style = getRarityStyle(incubatorEgg.rarity);
+    return {
+      id: incubatorEgg.id,
+      name: `${incubatorEgg.rarity} Egg`,
+      color: incubatorEgg.color,
+      generation: incubatorEgg.generation,
+      parentName: `Gen ${incubatorEgg.generation - 1}`,
+      hatchesIn: formatTimeRemaining(incubatorEgg.incubationEndsAt),
+      emoji: style.emoji,
+      rarity: incubatorEgg.rarity,
+      ...style,
+      egg: incubatorEgg,
+    };
+  }, [incubatorEgg]);
+
+  // Convert nursery eggs to display format
+  const nurseryDisplayEggs = useMemo(() => {
+    return nurseryEggs.map(egg => {
       const style = getRarityStyle(egg.rarity);
-      allEggs.push({
+      return {
         id: egg.id,
         name: `${egg.rarity} Egg`,
         color: egg.color,
@@ -134,11 +132,17 @@ export function EggsPanel({
         rarity: egg.rarity,
         ...style,
         egg,
-      });
+      };
     });
-    
-    return allEggs;
-  }, [incubatorEgg, nurseryEggs]);
+  }, [nurseryEggs]);
+
+  // All eggs for ready count
+  const allDisplayEggs = useMemo(() => {
+    const all: DisplayEgg[] = [];
+    if (incubatorDisplayEgg) all.push(incubatorDisplayEgg);
+    all.push(...nurseryDisplayEggs);
+    return all;
+  }, [incubatorDisplayEgg, nurseryDisplayEggs]);
 
   const handleUnlockSlot = () => {
     setShowUnlockToast(true);
@@ -168,9 +172,9 @@ export function EggsPanel({
           <ChevronDown className="w-4 h-4 text-violet-400 rotate-90" strokeWidth={2.5} />
         </motion.button>
         <div className="flex-1">
-          <h3 className="text-violet-800 font-bold text-base">Egg Incubator</h3>
+          <h3 className="text-violet-800 font-bold text-base">Nursery</h3>
           <p className="text-[10px] text-violet-500/80 font-medium">
-            {displayEggs.length}/{UNLOCKED_SLOTS} slots · {displayEggs.filter(e => e.hatchesIn === 'Ready!').length} ready
+            {nurseryEggs.length}/{UNLOCKED_SLOTS} nursery slots · {allDisplayEggs.filter(e => e.hatchesIn === 'Ready!').length} ready
           </p>
         </div>
       </div>
@@ -180,9 +184,9 @@ export function EggsPanel({
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
 
-        {/* Incubator housing */}
+        {/* Incubator section - single slot at top */}
         <div
-          className="relative rounded-3xl overflow-hidden p-4"
+          className="relative rounded-3xl overflow-hidden p-4 mb-3"
           style={{
             background: 'linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(245,240,255,0.78) 50%, rgba(254,243,199,0.65) 100%)',
             border: '1.5px solid rgba(216,180,254,0.5)',
@@ -192,22 +196,51 @@ export function EggsPanel({
           {/* Incubator top label */}
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,rgba(168,85,247,0.25))' }} />
-            <span className="text-[10px] font-black tracking-[0.18em] uppercase text-violet-400/80">Incubator Slots</span>
+            <span className="text-[10px] font-black tracking-[0.18em] uppercase text-violet-400/80">Incubator</span>
             <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,rgba(168,85,247,0.25),transparent)' }} />
           </div>
 
           {/* Warm glow underlay */}
           <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 80%, rgba(251,191,36,0.08) 0%, transparent 65%)' }} />
 
-          {/* Egg slots grid — all 18 slots */}
+          {/* Single incubator slot */}
+          <div className="flex justify-center">
+            <EggSlot
+              slotIndex={0}
+              egg={incubatorDisplayEgg}
+              onSelect={() => incubatorDisplayEgg && setSelectedEgg(incubatorDisplayEgg)}
+            />
+          </div>
+        </div>
+
+        {/* Nursery section - rows of 3 slots */}
+        <div
+          className="relative rounded-3xl overflow-hidden p-4"
+          style={{
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(245,240,255,0.78) 50%, rgba(254,243,199,0.65) 100%)',
+            border: '1.5px solid rgba(216,180,254,0.5)',
+            boxShadow: '0 8px 32px -4px rgba(168,85,247,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
+          }}
+        >
+          {/* Nursery top label */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,rgba(168,85,247,0.25))' }} />
+            <span className="text-[10px] font-black tracking-[0.18em] uppercase text-violet-400/80">Nursery</span>
+            <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,rgba(168,85,247,0.25),transparent)' }} />
+          </div>
+
+          {/* Warm glow underlay */}
+          <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 80%, rgba(251,191,36,0.08) 0%, transparent 65%)' }} />
+
+          {/* Nursery slots grid — rows of 3 */}
           <div className="grid grid-cols-3 gap-3">
             {Array.from({ length: TOTAL_SLOTS }, (_, i) => {
               // Rows 3–6 are locked
               if (i >= UNLOCKED_SLOTS) {
                 return <LockedSlot key={i} onUnlock={handleUnlockSlot} />;
               }
-              // Rows 1–2 are unlocked; fill with eggs where available
-              const displayEgg = displayEggs[i] ?? null;
+              // Fill with nursery eggs where available
+              const displayEgg = nurseryDisplayEggs[i] ?? null;
               return (
                 <EggSlot
                   key={i}
@@ -230,7 +263,7 @@ export function EggsPanel({
             onClick={() => setTipOpen(o => !o)}
           >
             <span className="text-base flex-shrink-0">💡</span>
-            <span className="flex-1 text-left text-[11px] font-bold text-violet-700/80">Incubator Tips</span>
+            <span className="flex-1 text-left text-[11px] font-bold text-violet-700/80">Nursery Tips</span>
             <motion.div animate={{ rotate: tipOpen ? 180 : 0 }} transition={{ duration: 0.22 }}>
               <ChevronDown className="w-3.5 h-3.5 text-violet-400" strokeWidth={2.5} />
             </motion.div>
