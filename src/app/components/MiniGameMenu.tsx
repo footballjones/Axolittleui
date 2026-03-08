@@ -147,6 +147,10 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       const elapsedSeconds = (now - lastEnergyUpdate) / 1000;
       const energyRegenRate = GAME_CONFIG.energyRegenRate / 3600; // per second (1 per hour = 1/3600 per second)
       const currentEnergy = energy || 0;
+      
+      // Calculate actual fractional energy
+      // Since energy is floored in storage, we need to calculate the fractional part
+      // based on time elapsed since lastEnergyUpdate
       const energyGained = energyRegenRate * elapsedSeconds;
       const fractionalEnergy = currentEnergy + energyGained;
       
@@ -158,12 +162,28 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
       
       // Calculate how much energy is needed until next full point
       // If we're at 5.3, we need 0.7 more to reach 6
-      const nextFullPoint = Math.ceil(fractionalEnergy);
+      const currentFloor = Math.floor(fractionalEnergy);
+      const nextFullPoint = currentFloor + 1;
       const energyNeeded = nextFullPoint - fractionalEnergy;
+      
+      // Calculate seconds needed: energyNeeded / (energy per second)
+      // energyRegenRate is already per second, so divide energyNeeded by it
       const secondsUntilNext = energyNeeded / energyRegenRate;
       
-      // Round to nearest second to avoid floating point issues
-      const totalSeconds = Math.round(secondsUntilNext);
+      // Ensure we don't show negative time
+      if (secondsUntilNext <= 0) {
+        setEnergyTimeText('Energy is full!');
+        return;
+      }
+      
+      // Round down to avoid showing time that hasn't passed yet
+      const totalSeconds = Math.floor(secondsUntilNext);
+      
+      // Cap at 1 hour max (shouldn't normally exceed this)
+      if (totalSeconds >= 3600) {
+        setEnergyTimeText(`60m 0s until next energy`);
+        return;
+      }
       
       if (totalSeconds <= 0) {
         setEnergyTimeText('Energy is full!');
@@ -183,8 +203,10 @@ export function MiniGameMenu({ onClose, onSelectGame, energy = 10, maxEnergy = 1
     // Update immediately
     updateTimer();
 
-    // Update every second
-    const interval = setInterval(updateTimer, 1000);
+    // Update every second to show live countdown
+    const interval = setInterval(() => {
+      updateTimer();
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [showEnergyInfo, energy, maxEnergy, lastEnergyUpdate]);
