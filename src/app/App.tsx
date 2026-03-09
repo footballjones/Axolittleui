@@ -494,11 +494,11 @@ export default function App() {
                   )}
                 </AnimatePresence>
                 {/* Home, Mini Games, Shop buttons - evenly spaced */}
-                <div className="flex justify-between items-center mt-1 gap-2">
+                <div className="flex justify-between items-center mt-1 gap-3">
                   <motion.button
                     onClick={() => { setCurrentScreen('home'); setShowHamburgerMenu(false); }}
                     className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
-                    style={{ padding: '16px' }}
+                    style={{ padding: '5.6px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 3 }}
@@ -509,7 +509,7 @@ export default function App() {
                   <motion.button
                     onClick={() => setCurrentScreen('games')}
                     className={`bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1 ${currentScreen === 'games' ? 'opacity-60' : ''}`}
-                    style={{ padding: '16px' }}
+                    style={{ padding: '8.4px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
@@ -520,7 +520,7 @@ export default function App() {
                   <motion.button
                     onClick={() => setActiveModal('shop')}
                     className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
-                    style={{ padding: '16px' }}
+                    style={{ padding: '5.6px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 1.5 }}
