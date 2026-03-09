@@ -26,9 +26,23 @@ export function createRebirthEgg(parent: Axolotl, pendingName?: string): Egg {
     ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic'];
   const parentRarityIndex = rarityOrder.indexOf(parentRarity);
   
-  // Special case: if intellect < 40 (neglect decay), can drop to Common
-  const canDropDueToNeglect = parent.secondaryStats.intellect < 40;
-  const minRarity = canDropDueToNeglect ? 'Common' : parentRarity;
+  // Neglect decay logic: higher rarities can drop if intellect is too low
+  let minRarity = parentRarity;
+  const intellect = parent.secondaryStats.intellect;
+  
+  if (parentRarity === 'Mythic' && intellect < 61) {
+    minRarity = 'Legendary';
+  } else if (parentRarity === 'Legendary' && intellect <= 60) {
+    minRarity = 'Epic';
+  } else if (parentRarity === 'Epic' && intellect < 47) {
+    minRarity = 'Rare';
+  } else if (parentRarity === 'Rare' && intellect < 40) {
+    minRarity = 'Common';
+  } else if (parentRarity === 'Common' && intellect < 40) {
+    // Can stay Common or drop (already at minimum)
+    minRarity = 'Common';
+  }
+  
   const minRarityIndex = rarityOrder.indexOf(minRarity);
   
   // Determine potential rarity based on generation and intellect

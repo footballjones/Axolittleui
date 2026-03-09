@@ -35,6 +35,7 @@ export interface Axolotl {
   lastUpdated: number;
   recessiveGenes?: RecessiveGenes; // Hidden traits that can manifest on rebirth/breeding
   rarity?: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic'; // Rarity of egg this axolotl came from
+  lastLevel?: number; // Track last level to detect level ups
 }
 
 export interface DecorationItem {

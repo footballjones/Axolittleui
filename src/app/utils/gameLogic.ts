@@ -95,6 +95,7 @@ export function generateAxolotl(
     lastUpdated: Date.now(),
     recessiveGenes: genes,
     rarity, // Store the rarity this axolotl came from
+    lastLevel: 1, // Start at level 1
   };
 }
 
@@ -162,8 +163,27 @@ export function cleanAquarium(axolotl: Axolotl, amount: number = 30): Axolotl {
 
 export function checkEvolution(axolotl: Axolotl): Axolotl {
   const level = calculateLevel(axolotl.experience);
+  const lastLevel = axolotl.lastLevel || level; // Default to current level if not set
   const stages: LifeStage[] = ['baby', 'juvenile', 'adult', 'elder'];
   const currentIndex = stages.indexOf(axolotl.stage);
+
+  // Check for level up and add +1 to each secondary stat
+  let updatedSecondaryStats = { ...axolotl.secondaryStats };
+  if (level > lastLevel) {
+    // Level up! Add +1 to each secondary stat
+    updatedSecondaryStats = {
+      strength: Math.min(100, updatedSecondaryStats.strength + 1),
+      intellect: Math.min(100, updatedSecondaryStats.intellect + 1),
+      stamina: Math.min(100, updatedSecondaryStats.stamina + 1),
+      speed: Math.min(100, updatedSecondaryStats.speed + 1),
+    };
+  }
+
+  let updatedAxolotl = {
+    ...axolotl,
+    secondaryStats: updatedSecondaryStats,
+    lastLevel: level, // Update last level
+  };
 
   if (currentIndex < stages.length - 1) {
     const nextStage = stages[currentIndex + 1];
@@ -171,14 +191,14 @@ export function checkEvolution(axolotl: Axolotl): Axolotl {
 
     // Evolution based on level only (not age)
     if (level >= requirements.minLevel) {
-      return {
-        ...axolotl,
+      updatedAxolotl = {
+        ...updatedAxolotl,
         stage: nextStage,
       };
     }
   }
 
-  return axolotl;
+  return updatedAxolotl;
 }
 
 export function canRebirth(axolotl: Axolotl): boolean {
