@@ -68,6 +68,28 @@ function migrateV1toV2(state: StoredState): StoredState {
     if (stageMigration[state.axolotl.stage]) {
       state.axolotl.stage = stageMigration[state.axolotl.stage];
     }
+    
+    // Infer rarity from secondary stats if not set (for backwards compatibility)
+    if (!state.axolotl.rarity && state.axolotl.secondaryStats) {
+      const avgStat = (
+        state.axolotl.secondaryStats.strength +
+        state.axolotl.secondaryStats.intellect +
+        state.axolotl.secondaryStats.stamina +
+        state.axolotl.secondaryStats.speed
+      ) / 4;
+      
+      if (avgStat >= 50) {
+        state.axolotl.rarity = 'Mythic';
+      } else if (avgStat >= 35) {
+        state.axolotl.rarity = 'Legendary';
+      } else if (avgStat >= 20) {
+        state.axolotl.rarity = 'Epic';
+      } else if (avgStat >= 9) {
+        state.axolotl.rarity = 'Rare';
+      } else {
+        state.axolotl.rarity = 'Common';
+      }
+    }
   }
   
   state.version = 2;

@@ -18,9 +18,22 @@ export function createRebirthEgg(parent: Axolotl, pendingName?: string): Egg {
     pattern = parent.recessiveGenes.pattern;
   }
   
-  // Determine rarity based on generation and intellect
-  // Higher generation and intellect = better chance for higher rarity
-  let rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' = 'Common';
+  // Get parent's rarity (default to Common if not set, for backwards compatibility)
+  const parentRarity = parent.rarity || 'Common';
+  
+  // Rarity hierarchy for comparison
+  const rarityOrder: ('Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic')[] = 
+    ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+  const parentRarityIndex = rarityOrder.indexOf(parentRarity);
+  
+  // Special case: if intellect < 40 (neglect decay), can drop to Common
+  const canDropDueToNeglect = parent.secondaryStats.intellect < 40;
+  const minRarity = canDropDueToNeglect ? 'Common' : parentRarity;
+  const minRarityIndex = rarityOrder.indexOf(minRarity);
+  
+  // Determine potential rarity based on generation and intellect
+  // But never go below parent's rarity (unless neglect)
+  let rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' = minRarity;
   const rand = Math.random();
   
   if (parent.generation >= 5 || parent.secondaryStats.intellect > 90) {
@@ -65,6 +78,12 @@ export function createRebirthEgg(parent: Axolotl, pendingName?: string): Egg {
     }
   }
   // Otherwise stays Common
+  
+  // Ensure we never go below the minimum rarity
+  const finalRarityIndex = rarityOrder.indexOf(rarity);
+  if (finalRarityIndex < minRarityIndex) {
+    rarity = minRarity;
+  }
   
   return {
     id: `egg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

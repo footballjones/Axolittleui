@@ -94,6 +94,7 @@ export function generateAxolotl(
     birthDate: Date.now(),
     lastUpdated: Date.now(),
     recessiveGenes: genes,
+    rarity, // Store the rarity this axolotl came from
   };
 }
 
