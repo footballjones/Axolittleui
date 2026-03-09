@@ -37,10 +37,27 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
     }
   }, [foodItems.length]);
 
-  // Check for nearby food and swim to it (after 7-second delay)
+  // Check for nearby food - can eat while falling or settled
   useEffect(() => {
     if (foodItems.length === 0) return;
 
+    // Check all food items (including falling ones) for eating
+    const allFood = foodItems;
+    
+    // First, check if axolotl is close enough to eat any food (even while falling)
+    for (const food of allFood) {
+      const distX = food.x - position.x;
+      const distY = food.y - position.y;
+      const distance = Math.sqrt(distX * distX + distY * distY);
+      
+      if (distance < 7) {
+        // Close enough to eat, regardless of whether it's falling or settled
+        onEatFood(food.id);
+        return;
+      }
+    }
+
+    // For auto-seeking, only check settled food and wait 7 seconds
     const settledFood = foodItems.filter(f => f.y > 10);
     if (settledFood.length === 0) return;
 
@@ -65,10 +82,6 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
     }, { food: null as FoodItem | null, distance: Infinity });
 
     if (closestFood.food) {
-      if (closestFood.distance < 7) {
-        onEatFood(closestFood.food.id);
-        return;
-      }
       setFacingLeft(closestFood.food.x < position.x);
       setPosition({ x: closestFood.food.x, y: closestFood.food.y });
     }
