@@ -197,10 +197,10 @@ export function EggsPanel({
                 <div className="px-6 pt-6 pb-4 text-center">
                   <div className="text-5xl mb-3">🌊</div>
                   <h2 className="text-2xl font-bold text-violet-800 mb-2">
-                    Release Current Axolotl?
+                    Hatch This Egg?
                   </h2>
                   <p className="text-sm text-violet-600">
-                    You already have an axolotl. To hatch this egg, you'll need to release your current axolotl into the wild.
+                    Any axolotl in your aquarium will be released to the wild if you hatch this egg.
                   </p>
                 </div>
                 <div className="px-6 pb-6 flex gap-3">
@@ -259,7 +259,7 @@ export function EggsPanel({
                     Are You Really Sure?
                   </h2>
                   <p className="text-sm text-red-700 mb-2">
-                    Releasing your current axolotl will permanently lose all progress including:
+                    If you have an axolotl, releasing it will permanently lose all progress including:
                   </p>
                   <ul className="text-xs text-red-600 text-left space-y-1 mb-3 bg-white/40 rounded-lg p-3">
                     <li>• Current level and experience</li>
@@ -543,18 +543,9 @@ export function EggsPanel({
                       const isReady = isEggReady(egg);
                       if (!isReady) return;
                       
-                      // Always check hasAxolotl - if true, show confirmation
-                      // Check if hasAxolotl is truthy (true or any truthy value)
-                      if (hasAxolotl) {
-                        // Show first confirmation if axolotl exists
-                        setEggToHatch(egg);
-                        setShowFirstConfirm(true);
-                        return; // Important: return early to prevent any other execution
-                      }
-                      
-                      // No axolotl, proceed directly to name entry
+                      // Always show confirmation dialogs before hatching
                       setEggToHatch(egg);
-                      setShowHatchModal(true);
+                      setShowFirstConfirm(true);
                     }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
                     style={
