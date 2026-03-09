@@ -880,6 +880,7 @@ export default function App() {
                           onGift={handleGiftEgg}
                           onDiscard={handleDiscardEgg}
                           opals={opals}
+                          hasAxolotl={!!gameState?.axolotl}
                         />
                       )}
                     </AnimatePresence>

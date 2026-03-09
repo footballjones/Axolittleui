@@ -363,6 +363,9 @@ export function useGameActions({
     setGameState(prev => {
       if (!prev) return prev;
       
+      // Safety check: if axolotl exists, this should have been confirmed in UI
+      // But we'll allow it here since the UI handles the confirmation
+      
       if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
         if (!isEggReady(prev.incubatorEgg)) return prev;
         
@@ -370,7 +373,7 @@ export function useGameActions({
         
         return {
           ...prev,
-          axolotl: newAxolotl,
+          axolotl: newAxolotl, // This will replace existing axolotl if one exists
           incubatorEgg: null,
         };
       }
@@ -384,7 +387,7 @@ export function useGameActions({
           const newAxolotl = hatchEgg(egg, name);
           return {
             ...prev,
-            axolotl: newAxolotl,
+            axolotl: newAxolotl, // This will replace existing axolotl if one exists
             nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
           };
         }

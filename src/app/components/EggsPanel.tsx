@@ -97,6 +97,7 @@ interface Props {
   onGift?: (eggId: string) => void;
   onDiscard?: (eggId: string) => void;
   opals?: number;
+  hasAxolotl?: boolean; // Whether an axolotl already exists
 }
 
 export function EggsPanel({ 
@@ -108,12 +109,15 @@ export function EggsPanel({
   onGift,
   onDiscard,
   opals = 0,
+  hasAxolotl,
 }: Props) {
   const [selectedEgg, setSelectedEgg] = useState<DisplayEgg | null>(null);
   const [showUnlockToast, setShowUnlockToast] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
   const [showHatchModal, setShowHatchModal] = useState(false);
   const [eggToHatch, setEggToHatch] = useState<Egg | null>(null);
+  const [showFirstConfirm, setShowFirstConfirm] = useState(false);
+  const [showSecondConfirm, setShowSecondConfirm] = useState(false);
 
   // Convert incubator egg to display format
   const incubatorDisplayEgg = useMemo(() => {
@@ -166,14 +170,143 @@ export function EggsPanel({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: '100%' }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: '100%' }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col rounded-3xl overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #f5f3ff 0%, #ede9fe 48%, #fce7f3 100%)' }}
-    >
+    <>
+      {/* Confirmation dialogs - outside main container to ensure they're on top */}
+      {/* First confirmation: Release current axolotl? */}
+      <AnimatePresence>
+        {showFirstConfirm && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowFirstConfirm(false);
+                setEggToHatch(null);
+              }}
+            />
+            <motion.div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-full max-w-sm rounded-3xl overflow-hidden bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100 border-2 border-violet-300/60 shadow-2xl">
+                <div className="px-6 pt-6 pb-4 text-center">
+                  <div className="text-5xl mb-3">🌊</div>
+                  <h2 className="text-2xl font-bold text-violet-800 mb-2">
+                    Release Current Axolotl?
+                  </h2>
+                  <p className="text-sm text-violet-600">
+                    You already have an axolotl. To hatch this egg, you'll need to release your current axolotl into the wild.
+                  </p>
+                </div>
+                <div className="px-6 pb-6 flex gap-3">
+                  <motion.button
+                    onClick={() => {
+                      setShowFirstConfirm(false);
+                      setEggToHatch(null);
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-violet-700 bg-white/60 border border-violet-200 active:bg-white/80"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    onClick={() => {
+                      setShowFirstConfirm(false);
+                      setShowSecondConfirm(true);
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-violet-500 to-purple-500 active:from-violet-600 active:to-purple-600"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Continue
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Second confirmation: Are you really sure? */}
+      <AnimatePresence>
+        {showSecondConfirm && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowSecondConfirm(false);
+                setEggToHatch(null);
+              }}
+            />
+            <motion.div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-full max-w-sm rounded-3xl overflow-hidden bg-gradient-to-br from-red-100 via-orange-100 to-amber-100 border-2 border-red-300/60 shadow-2xl">
+                <div className="px-6 pt-6 pb-4 text-center">
+                  <div className="text-5xl mb-3">⚠️</div>
+                  <h2 className="text-2xl font-bold text-red-800 mb-2">
+                    Are You Really Sure?
+                  </h2>
+                  <p className="text-sm text-red-700 mb-2">
+                    Releasing your current axolotl will permanently lose all progress including:
+                  </p>
+                  <ul className="text-xs text-red-600 text-left space-y-1 mb-3 bg-white/40 rounded-lg p-3">
+                    <li>• Current level and experience</li>
+                    <li>• All stat progress</li>
+                    <li>• Life stage progression</li>
+                    <li>• Generation and lineage</li>
+                  </ul>
+                  <p className="text-sm font-semibold text-red-800">
+                    This cannot be undone!
+                  </p>
+                </div>
+                <div className="px-6 pb-6 flex gap-3">
+                  <motion.button
+                    onClick={() => {
+                      setShowSecondConfirm(false);
+                      setEggToHatch(null);
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-red-700 bg-white/60 border border-red-200 active:bg-white/80"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    onClick={() => {
+                      setShowSecondConfirm(false);
+                      setShowHatchModal(true);
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-red-500 to-orange-500 active:from-red-600 active:to-orange-600"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Yes, Release
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        initial={{ opacity: 0, y: '100%' }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: '100%' }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="absolute inset-0 flex flex-col rounded-3xl overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #f5f3ff 0%, #ede9fe 48%, #fce7f3 100%)' }}
+      >
       {/* Decorative orbs */}
       <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-violet-300/30 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-12 -left-6 w-44 h-44 rounded-full bg-amber-200/25 blur-3xl pointer-events-none" />
@@ -403,10 +536,25 @@ export function EggsPanel({
                   {/* Hatch / Watch */}
                   <motion.button
                     onClick={() => {
-                      if (selectedEgg.hatchesIn === 'Ready!' && onHatch) {
-                        setEggToHatch(selectedEgg.egg);
-                        setShowHatchModal(true);
+                      if (!selectedEgg || selectedEgg.hatchesIn !== 'Ready!' || !onHatch) return;
+                      
+                      // Verify egg is actually ready
+                      const egg = selectedEgg.egg;
+                      const isReady = isEggReady(egg);
+                      if (!isReady) return;
+                      
+                      // Always check hasAxolotl - if true, show confirmation
+                      // Check if hasAxolotl is truthy (true or any truthy value)
+                      if (hasAxolotl) {
+                        // Show first confirmation if axolotl exists
+                        setEggToHatch(egg);
+                        setShowFirstConfirm(true);
+                        return; // Important: return early to prevent any other execution
                       }
+                      
+                      // No axolotl, proceed directly to name entry
+                      setEggToHatch(egg);
+                      setShowHatchModal(true);
                     }}
                     className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
                     style={
@@ -513,9 +661,9 @@ export function EggsPanel({
         )}
       </AnimatePresence>
 
-      {/* Hatch name modal */}
+      {/* Hatch name modal - only show if no axolotl OR after confirmations */}
       <EggHatchModal
-        isOpen={showHatchModal}
+        isOpen={showHatchModal && !showFirstConfirm && !showSecondConfirm}
         onClose={() => {
           setShowHatchModal(false);
           setEggToHatch(null);
@@ -524,6 +672,7 @@ export function EggsPanel({
           if (eggToHatch && onHatch) {
             onHatch(eggToHatch.id, name);
             setSelectedEgg(null);
+            setEggToHatch(null);
           }
         }}
         eggRarity={eggToHatch?.rarity}
