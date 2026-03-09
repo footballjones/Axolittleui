@@ -497,7 +497,7 @@ export default function App() {
                 <div className="flex justify-between items-center mt-1 gap-3">
                   <motion.button
                     onClick={() => { setCurrentScreen('home'); setShowHamburgerMenu(false); }}
-                    className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
+                    className="bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1"
                     style={{ padding: '5.6px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
@@ -508,7 +508,7 @@ export default function App() {
                   </motion.button>
                   <motion.button
                     onClick={() => setCurrentScreen('games')}
-                    className={`bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1 ${currentScreen === 'games' ? 'opacity-60' : ''}`}
+                    className={`bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1 ${currentScreen === 'games' ? 'opacity-60' : ''}`}
                     style={{ padding: '8.4px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
@@ -519,7 +519,7 @@ export default function App() {
                   </motion.button>
                   <motion.button
                     onClick={() => setActiveModal('shop')}
-                    className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
+                    className="bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1"
                     style={{ padding: '5.6px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
