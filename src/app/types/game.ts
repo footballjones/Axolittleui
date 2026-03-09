@@ -56,7 +56,7 @@ export interface Egg {
   incubationEndsAt: number; // timestamp when ready to hatch
   color: string; // from genetics (may include recessive expression)
   pattern: string; // from genetics (may include recessive expression)
-  rarity: 'Common' | 'Rare' | 'Legendary';
+  rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
   pendingName?: string; // Name provided during rebirth (used at hatch)
 }
 

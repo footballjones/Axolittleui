@@ -23,20 +23,49 @@ export const COLORS = [
 
 export const PATTERNS = ['solid', 'spotted', 'striped', 'gradient'];
 
+/**
+ * Get stat range for a given rarity
+ */
+function getRarityStatRange(rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic'): { min: number; max: number } {
+  switch (rarity) {
+    case 'Common':
+      return { min: 1, max: 10 };
+    case 'Rare':
+      return { min: 7, max: 17 };
+    case 'Epic':
+      return { min: 15, max: 25 };
+    case 'Legendary':
+      return { min: 31, max: 40 };
+    case 'Mythic':
+      return { min: 50, max: 60 };
+    default:
+      return { min: 1, max: 10 }; // Default to Common
+  }
+}
+
+/**
+ * Generate a random stat value within the given range
+ */
+function generateStatInRange(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export function generateAxolotl(
   name: string,
   generation: number = 1,
   parentIds: string[] = [],
   inheritedColor?: string,
   inheritedPattern?: string,
-  recessiveGenes?: { color?: string; pattern?: string }
+  recessiveGenes?: { color?: string; pattern?: string },
+  rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' = 'Common'
 ): Axolotl {
-  // Generate random base secondary stats (30-70 range for variety)
+  // Generate secondary stats based on rarity
+  const statRange = getRarityStatRange(rarity);
   const baseStats = {
-    strength: Math.floor(Math.random() * 40) + 30,
-    intellect: Math.floor(Math.random() * 40) + 30,
-    stamina: Math.floor(Math.random() * 40) + 30,
-    speed: Math.floor(Math.random() * 40) + 30,
+    strength: generateStatInRange(statRange.min, statRange.max),
+    intellect: generateStatInRange(statRange.min, statRange.max),
+    stamina: generateStatInRange(statRange.min, statRange.max),
+    speed: generateStatInRange(statRange.min, statRange.max),
   };
 
   // Assign random recessive genes if not provided

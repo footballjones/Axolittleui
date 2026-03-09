@@ -79,7 +79,8 @@ export function hatchEgg(egg: Egg, name: string): Axolotl {
     egg.parentIds,
     egg.color, // May already include recessive expression
     egg.pattern, // May already include recessive expression
-    undefined // New random recessive genes for this axolotl
+    undefined, // New random recessive genes for this axolotl
+    egg.rarity // Use the egg's rarity to determine starting stats
   );
 }
 
