@@ -134,86 +134,6 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
                   transition={{ duration: 0.2 }}
                   className="space-y-3"
                 >
-                  {/* Your code card */}
-                  <div
-                    className="rounded-2xl p-3.5"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(245,240,255,0.9) 100%)',
-                      border: '1.5px solid rgba(216,180,254,0.5)',
-                      boxShadow: '0 4px 16px -4px rgba(139,92,246,0.1)',
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-sm">🪬</span>
-                      <span className="text-violet-700 text-[11px] font-black tracking-wider uppercase">Your Code</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex-1 rounded-xl px-3 py-2 font-mono text-violet-800 text-xs tracking-widest"
-                        style={{ background: 'rgba(237,233,254,0.8)', border: '1px solid rgba(196,181,253,0.5)' }}
-                      >
-                        {myCode}
-                      </div>
-                      <motion.button
-                        onClick={copyCode}
-                        className="rounded-xl p-2 active:scale-90"
-                        style={{
-                          background: copied
-                            ? 'linear-gradient(135deg, rgba(134,239,172,0.6), rgba(74,222,128,0.5))'
-                            : 'linear-gradient(135deg, rgba(167,139,250,0.5), rgba(139,92,246,0.4))',
-                          border: copied ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(139,92,246,0.35)',
-                        }}
-                        whileTap={{ scale: 0.88 }}
-                      >
-                        {copied
-                          ? <Check className="w-4 h-4 text-emerald-600" strokeWidth={2.5} />
-                          : <Copy className="w-4 h-4 text-violet-600" strokeWidth={2} />
-                        }
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  {/* Add friend card */}
-                  <div
-                    className="rounded-2xl p-3.5"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,249,255,0.9) 100%)',
-                      border: '1.5px solid rgba(186,230,253,0.6)',
-                      boxShadow: '0 4px 16px -4px rgba(14,165,233,0.08)',
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-sm">🐠</span>
-                      <span className="text-sky-700 text-[11px] font-black tracking-wider uppercase">Add Friend</span>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={friendCode}
-                        onChange={e => setFriendCode(e.target.value.toUpperCase())}
-                        placeholder="Enter code…"
-                        className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sky-800 text-xs placeholder-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-300/50 transition-all"
-                        style={{ background: 'rgba(224,242,254,0.8)', border: '1px solid rgba(186,230,253,0.6)' }}
-                      />
-                      <motion.button
-                        onClick={handleAddFriend}
-                        disabled={!friendCode.trim()}
-                        className="rounded-xl px-3.5 py-2 text-[11px] font-black tracking-wide shrink-0"
-                        style={{
-                          background: friendCode.trim()
-                            ? 'linear-gradient(135deg, #38bdf8, #0ea5e9)'
-                            : 'rgba(186,230,253,0.4)',
-                          color: friendCode.trim() ? '#fff' : 'rgba(14,165,233,0.4)',
-                          border: '1px solid rgba(56,189,248,0.35)',
-                          boxShadow: friendCode.trim() ? '0 4px 12px -2px rgba(14,165,233,0.3)' : 'none',
-                        }}
-                        whileTap={friendCode.trim() ? { scale: 0.92 } : {}}
-                      >
-                        Add
-                      </motion.button>
-                    </div>
-                  </div>
-
                   {/* Friends list */}
                   <div>
                     <div className="flex items-center gap-2 mb-2.5 px-0.5">
@@ -431,6 +351,86 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
                         })}
                       </div>
                     )}
+                  </div>
+
+                  {/* Your code card */}
+                  <div
+                    className="rounded-2xl p-3.5"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(245,240,255,0.9) 100%)',
+                      border: '1.5px solid rgba(216,180,254,0.5)',
+                      boxShadow: '0 4px 16px -4px rgba(139,92,246,0.1)',
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-sm">🪬</span>
+                      <span className="text-violet-700 text-[11px] font-black tracking-wider uppercase">Your Code</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex-1 rounded-xl px-3 py-2 font-mono text-violet-800 text-xs tracking-widest"
+                        style={{ background: 'rgba(237,233,254,0.8)', border: '1px solid rgba(196,181,253,0.5)' }}
+                      >
+                        {myCode}
+                      </div>
+                      <motion.button
+                        onClick={copyCode}
+                        className="rounded-xl p-2 active:scale-90"
+                        style={{
+                          background: copied
+                            ? 'linear-gradient(135deg, rgba(134,239,172,0.6), rgba(74,222,128,0.5))'
+                            : 'linear-gradient(135deg, rgba(167,139,250,0.5), rgba(139,92,246,0.4))',
+                          border: copied ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(139,92,246,0.35)',
+                        }}
+                        whileTap={{ scale: 0.88 }}
+                      >
+                        {copied
+                          ? <Check className="w-4 h-4 text-emerald-600" strokeWidth={2.5} />
+                          : <Copy className="w-4 h-4 text-violet-600" strokeWidth={2} />
+                        }
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Add friend card */}
+                  <div
+                    className="rounded-2xl p-3.5"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,249,255,0.9) 100%)',
+                      border: '1.5px solid rgba(186,230,253,0.6)',
+                      boxShadow: '0 4px 16px -4px rgba(14,165,233,0.08)',
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-sm">🐠</span>
+                      <span className="text-sky-700 text-[11px] font-black tracking-wider uppercase">Add Friend</span>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={friendCode}
+                        onChange={e => setFriendCode(e.target.value.toUpperCase())}
+                        placeholder="Enter code…"
+                        className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sky-800 text-xs placeholder-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-300/50 transition-all"
+                        style={{ background: 'rgba(224,242,254,0.8)', border: '1px solid rgba(186,230,253,0.6)' }}
+                      />
+                      <motion.button
+                        onClick={handleAddFriend}
+                        disabled={!friendCode.trim()}
+                        className="rounded-xl px-3.5 py-2 text-[11px] font-black tracking-wide shrink-0"
+                        style={{
+                          background: friendCode.trim()
+                            ? 'linear-gradient(135deg, #38bdf8, #0ea5e9)'
+                            : 'rgba(186,230,253,0.4)',
+                          color: friendCode.trim() ? '#fff' : 'rgba(14,165,233,0.4)',
+                          border: '1px solid rgba(56,189,248,0.35)',
+                          boxShadow: friendCode.trim() ? '0 4px 12px -2px rgba(14,165,233,0.3)' : 'none',
+                        }}
+                        whileTap={friendCode.trim() ? { scale: 0.92 } : {}}
+                      >
+                        Add
+                      </motion.button>
+                    </div>
                   </div>
                 </motion.div>
               )}
