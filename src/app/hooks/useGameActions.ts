@@ -359,13 +359,25 @@ export function useGameActions({
     setActiveModal(null);
   }, []);
 
+  const handleReleaseAxolotl = useCallback(() => {
+    setGameState(prev => {
+      if (!prev?.axolotl) return prev;
+      
+      const oldAxolotl = prev.axolotl;
+      
+      return {
+        ...prev,
+        axolotl: null,
+        lineage: [...prev.lineage, oldAxolotl],
+      };
+    });
+  }, []);
+
   const handleHatchEgg = useCallback((eggId: string, name: string) => {
     setGameState(prev => {
       if (!prev) return prev;
       
-      // Safety check: if axolotl exists, this should have been confirmed in UI
-      // But we'll allow it here since the UI handles the confirmation
-      
+      // Only allow hatching incubator eggs
       if (prev.incubatorEgg && prev.incubatorEgg.id === eggId) {
         if (!isEggReady(prev.incubatorEgg)) return prev;
         
@@ -373,25 +385,13 @@ export function useGameActions({
         
         return {
           ...prev,
-          axolotl: newAxolotl, // This will replace existing axolotl if one exists
+          axolotl: newAxolotl,
           incubatorEgg: null,
         };
       }
       
-      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
-      if (eggIndex >= 0) {
-        const egg = prev.nurseryEggs[eggIndex];
-        if (!isEggReady(egg)) return prev;
-        
-        if (!prev.incubatorEgg) {
-          const newAxolotl = hatchEgg(egg, name);
-          return {
-            ...prev,
-            axolotl: newAxolotl, // This will replace existing axolotl if one exists
-            nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
-          };
-        }
-      }
+      // Nursery eggs cannot hatch directly - they must be moved to incubator first
+      // (This logic is removed - eggs can only hatch in incubator slot)
       
       return prev;
     });
@@ -468,6 +468,26 @@ export function useGameActions({
       time: 'now',
       read: false,
     }]);
+  }, []);
+
+  const handleMoveToIncubator = useCallback((eggId: string) => {
+    setGameState(prev => {
+      if (!prev) return prev;
+      
+      // Can only move if incubator is empty
+      if (prev.incubatorEgg) return prev;
+      
+      const eggIndex = prev.nurseryEggs.findIndex(e => e.id === eggId);
+      if (eggIndex < 0) return prev;
+      
+      const egg = prev.nurseryEggs[eggIndex];
+      
+      return {
+        ...prev,
+        incubatorEgg: egg,
+        nurseryEggs: prev.nurseryEggs.filter((_, i) => i !== eggIndex),
+      };
+    });
   }, []);
 
   const handleDiscardEgg = useCallback((eggId: string) => {
@@ -679,7 +699,9 @@ export function useGameActions({
     handleRemoveFriend,
     handleBreed,
     handleRebirth,
+    handleReleaseAxolotl,
     handleHatchEgg,
+    handleMoveToIncubator,
     handleBoostEgg,
     handleGiftEgg,
     handleDiscardEgg,

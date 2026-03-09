@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Users, Copy, Check, ChevronDown, Heart, Waves } from 'lucide-react';
+import { X, Users, Copy, Check, ChevronDown, Heart, Waves, Plus } from 'lucide-react';
 import { Axolotl, Friend } from '../types/game';
 import { generateFriendCode } from '../utils/storage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,6 +20,7 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
   const [activeTab, setActiveTab] = useState<'friends' | 'lineage'>('friends');
   const [expandedFriend, setExpandedFriend] = useState<string | null>(null);
   const [pokedFriends, setPokedFriends] = useState<Set<string>>(new Set());
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
 
   const myCode = generateFriendCode(axolotl);
 
@@ -33,6 +34,7 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
     if (friendCode.trim()) {
       onAddFriend(friendCode.trim());
       setFriendCode('');
+      setShowAddFriendModal(false);
     }
   };
 
@@ -144,6 +146,17 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
                       >
                         {friends.length}
                       </div>
+                      <motion.button
+                        onClick={() => setShowAddFriendModal(true)}
+                        className="rounded-full p-1.5 active:scale-90 flex-shrink-0"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(167,139,250,0.5), rgba(139,92,246,0.4))',
+                          border: '1px solid rgba(139,92,246,0.35)',
+                        }}
+                        whileTap={{ scale: 0.85 }}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-violet-600" strokeWidth={2.5} />
+                      </motion.button>
                     </div>
 
                     {friends.length === 0 ? (
@@ -392,46 +405,6 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
                     </div>
                   </div>
 
-                  {/* Add friend card */}
-                  <div
-                    className="rounded-2xl p-3.5"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,249,255,0.9) 100%)',
-                      border: '1.5px solid rgba(186,230,253,0.6)',
-                      boxShadow: '0 4px 16px -4px rgba(14,165,233,0.08)',
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-sm">🐠</span>
-                      <span className="text-sky-700 text-[11px] font-black tracking-wider uppercase">Add Friend</span>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={friendCode}
-                        onChange={e => setFriendCode(e.target.value.toUpperCase())}
-                        placeholder="Enter code…"
-                        className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sky-800 text-xs placeholder-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-300/50 transition-all"
-                        style={{ background: 'rgba(224,242,254,0.8)', border: '1px solid rgba(186,230,253,0.6)' }}
-                      />
-                      <motion.button
-                        onClick={handleAddFriend}
-                        disabled={!friendCode.trim()}
-                        className="rounded-xl px-3.5 py-2 text-[11px] font-black tracking-wide shrink-0"
-                        style={{
-                          background: friendCode.trim()
-                            ? 'linear-gradient(135deg, #38bdf8, #0ea5e9)'
-                            : 'rgba(186,230,253,0.4)',
-                          color: friendCode.trim() ? '#fff' : 'rgba(14,165,233,0.4)',
-                          border: '1px solid rgba(56,189,248,0.35)',
-                          boxShadow: friendCode.trim() ? '0 4px 12px -2px rgba(14,165,233,0.3)' : 'none',
-                        }}
-                        whileTap={friendCode.trim() ? { scale: 0.92 } : {}}
-                      >
-                        Add
-                      </motion.button>
-                    </div>
-                  </div>
                 </motion.div>
               )}
 
@@ -565,6 +538,88 @@ export function SocialModal({ onClose, axolotl, friends, onAddFriend, onRemoveFr
           </div>
         </div>
       </motion.div>
+
+      {/* Add Friend Modal */}
+      <AnimatePresence>
+        {showAddFriendModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-3"
+            style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}
+            onClick={() => setShowAddFriendModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="rounded-2xl p-5"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,249,255,0.95) 100%)',
+                  border: '1.5px solid rgba(186,230,253,0.6)',
+                  boxShadow: '0 12px 32px -8px rgba(14,165,233,0.2)',
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🐠</span>
+                    <span className="text-sky-700 text-sm font-black tracking-wider uppercase">Add Friend</span>
+                  </div>
+                  <motion.button
+                    onClick={() => setShowAddFriendModal(false)}
+                    className="rounded-full p-1.5 active:scale-90"
+                    style={{
+                      background: 'rgba(186,230,253,0.3)',
+                      border: '1px solid rgba(186,230,253,0.5)',
+                    }}
+                    whileTap={{ scale: 0.85 }}
+                  >
+                    <X className="w-4 h-4 text-sky-600" strokeWidth={2.5} />
+                  </motion.button>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={friendCode}
+                    onChange={e => setFriendCode(e.target.value.toUpperCase())}
+                    placeholder="Enter friend code…"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sky-800 text-sm placeholder-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-300/50 transition-all"
+                    style={{ background: 'rgba(224,242,254,0.8)', border: '1px solid rgba(186,230,253,0.6)' }}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddFriend();
+                      }
+                    }}
+                  />
+                  <motion.button
+                    onClick={handleAddFriend}
+                    disabled={!friendCode.trim()}
+                    className="rounded-xl px-4 py-2.5 text-xs font-black tracking-wide shrink-0"
+                    style={{
+                      background: friendCode.trim()
+                        ? 'linear-gradient(135deg, #38bdf8, #0ea5e9)'
+                        : 'rgba(186,230,253,0.4)',
+                      color: friendCode.trim() ? '#fff' : 'rgba(14,165,233,0.4)',
+                      border: '1px solid rgba(56,189,248,0.35)',
+                      boxShadow: friendCode.trim() ? '0 4px 12px -2px rgba(14,165,233,0.3)' : 'none',
+                    }}
+                    whileTap={friendCode.trim() ? { scale: 0.92 } : {}}
+                  >
+                    Add
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

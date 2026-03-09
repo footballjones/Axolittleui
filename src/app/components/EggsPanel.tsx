@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, X, Lock } from 'lucide-react';
-import { Egg } from '../types/game';
+import { Egg, Axolotl } from '../types/game';
 import { isEggReady } from '../utils/eggs';
 import { GAME_CONFIG } from '../config/game';
 import { EggHatchModal } from './EggHatchModal';
+import { ReleaseAxolotlModal } from './ReleaseAxolotlModal';
 
 interface DisplayEgg {
   id: string;
@@ -96,7 +97,10 @@ interface Props {
   onClose: () => void;
   incubatorEgg: Egg | null;
   nurseryEggs: Egg[];
+  axolotl: Axolotl | null;
   onHatch?: (eggId: string, name: string) => void;
+  onReleaseAxolotl?: () => void;
+  onMoveToIncubator?: (eggId: string) => void;
   onBoost?: (eggId: string) => void;
   onGift?: (eggId: string) => void;
   onDiscard?: (eggId: string) => void;
@@ -108,7 +112,10 @@ export function EggsPanel({
   onClose, 
   incubatorEgg, 
   nurseryEggs,
+  axolotl,
   onHatch,
+  onReleaseAxolotl,
+  onMoveToIncubator,
   onBoost,
   onGift,
   onDiscard,
@@ -119,6 +126,7 @@ export function EggsPanel({
   const [showUnlockToast, setShowUnlockToast] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
   const [showHatchModal, setShowHatchModal] = useState(false);
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [eggToHatch, setEggToHatch] = useState<Egg | null>(null);
   const [showFirstConfirm, setShowFirstConfirm] = useState(false);
   const [showSecondConfirm, setShowSecondConfirm] = useState(false);
@@ -537,38 +545,76 @@ export function EggsPanel({
 
                 {/* Action tiles grid */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  {/* Hatch / Watch */}
-                  <motion.button
-                    onClick={() => {
-                      if (!selectedEgg || selectedEgg.hatchesIn !== 'Ready!' || !onHatch) return;
-                      
-                      // Verify egg is actually ready
-                      const egg = selectedEgg.egg;
-                      const isReady = isEggReady(egg);
-                      if (!isReady) return;
-                      
-                      // Always show confirmation dialogs before hatching
-                      setEggToHatch(egg);
-                      setShowFirstConfirm(true);
-                    }}
-                    className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
-                    style={
-                      selectedEgg.hatchesIn === 'Ready!'
-                        ? { background: 'linear-gradient(135deg, rgba(134,239,172,0.75) 0%, rgba(74,222,128,0.6) 100%)', border: '1px solid rgba(34,197,94,0.4)' }
-                        : { background: 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)', border: '1px solid rgba(148,163,184,0.35)' }
-                    }
-                    whileTap={{ scale: 0.92 }}
-                    disabled={selectedEgg.hatchesIn !== 'Ready!'}
-                  >
-                    <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
-                    <span className="text-[1.6rem]">{selectedEgg.hatchesIn === 'Ready!' ? '🐣' : '👀'}</span>
-                    <span className={`text-[10px] font-black tracking-wider uppercase ${selectedEgg.hatchesIn === 'Ready!' ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {selectedEgg.hatchesIn === 'Ready!' ? 'Hatch Now' : 'Watch'}
-                    </span>
-                    {selectedEgg.hatchesIn !== 'Ready!' && (
-                      <span className="text-[9px] text-slate-400">{selectedEgg.hatchesIn}</span>
-                    )}
-                  </motion.button>
+                  {/* Hatch / Watch / Move to Incubator */}
+                  {incubatorEgg && incubatorEgg.id === selectedEgg.egg.id ? (
+                    // Incubator egg - show Hatch/Watch button
+                    <motion.button
+                      onClick={() => {
+                        const isReady = selectedEgg.hatchesIn === 'Ready!';
+                        
+                        if (isReady) {
+                          // Check if axolotl exists
+                          if (axolotl) {
+                            // Show release modal first
+                            setEggToHatch(selectedEgg.egg);
+                            setShowReleaseModal(true);
+                          } else {
+                            // No axolotl, proceed to hatch confirmation
+                            setEggToHatch(selectedEgg.egg);
+                            setShowHatchModal(true);
+                          }
+                        }
+                      }}
+                      className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
+                      style={
+                        selectedEgg.hatchesIn === 'Ready!'
+                          ? { background: 'linear-gradient(135deg, rgba(134,239,172,0.75) 0%, rgba(74,222,128,0.6) 100%)', border: '1px solid rgba(34,197,94,0.4)' }
+                          : { background: 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)', border: '1px solid rgba(148,163,184,0.35)' }
+                      }
+                      whileTap={{ scale: 0.92 }}
+                      disabled={selectedEgg.hatchesIn !== 'Ready!'}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                      <span className="text-[1.6rem]">{selectedEgg.hatchesIn === 'Ready!' ? '🐣' : '👀'}</span>
+                      <span className={`text-[10px] font-black tracking-wider uppercase ${
+                        selectedEgg.hatchesIn === 'Ready!' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}>
+                        {selectedEgg.hatchesIn === 'Ready!' ? 'Hatch' : 'Watch'}
+                      </span>
+                      {selectedEgg.hatchesIn !== 'Ready!' && (
+                        <span className="text-[9px] text-slate-400">{selectedEgg.hatchesIn}</span>
+                      )}
+                    </motion.button>
+                  ) : (
+                    // Nursery egg - show Move to Incubator button (if incubator is empty)
+                    <motion.button
+                      onClick={() => {
+                        if (onMoveToIncubator && !incubatorEgg) {
+                          onMoveToIncubator(selectedEgg.egg.id);
+                          setSelectedEgg(null);
+                        }
+                      }}
+                      className="group relative flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl overflow-hidden"
+                      style={
+                        !incubatorEgg
+                          ? { background: 'linear-gradient(135deg, rgba(167,139,250,0.75) 0%, rgba(139,92,246,0.6) 100%)', border: '1px solid rgba(139,92,246,0.4)' }
+                          : { background: 'linear-gradient(135deg, rgba(226,232,240,0.75) 0%, rgba(203,213,225,0.6) 100%)', border: '1px solid rgba(148,163,184,0.35)' }
+                      }
+                      whileTap={{ scale: 0.92 }}
+                      disabled={!!incubatorEgg || !onMoveToIncubator}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity rounded-2xl" style={{ background: 'rgba(255,255,255,0.35)' }} />
+                      <span className="text-[1.6rem]">📦</span>
+                      <span className={`text-[10px] font-black tracking-wider uppercase ${
+                        !incubatorEgg ? 'text-violet-700' : 'text-slate-500'
+                      }`}>
+                        {!incubatorEgg ? 'Move to Incubator' : 'Incubator Full'}
+                      </span>
+                      {incubatorEgg && (
+                        <span className="text-[9px] text-slate-400">Slot occupied</span>
+                      )}
+                    </motion.button>
+                  )}
 
                   {/* Boost */}
                   <motion.button
@@ -656,7 +702,28 @@ export function EggsPanel({
         )}
       </AnimatePresence>
 
-      {/* Hatch name modal - only show if no axolotl OR after confirmations */}
+      {/* Release axolotl modal */}
+      <ReleaseAxolotlModal
+        isOpen={showReleaseModal}
+        onClose={() => {
+          setShowReleaseModal(false);
+          setEggToHatch(null);
+        }}
+        onConfirm={() => {
+          // Release the axolotl first, then proceed to hatch
+          if (onReleaseAxolotl) {
+            onReleaseAxolotl();
+          }
+          // After release, show hatch modal
+          setShowReleaseModal(false);
+          if (eggToHatch) {
+            setShowHatchModal(true);
+          }
+        }}
+        axolotlName={axolotl?.name}
+      />
+
+      {/* Hatch name modal */}
       <EggHatchModal
         isOpen={showHatchModal && !showFirstConfirm && !showSecondConfirm}
         onClose={() => {

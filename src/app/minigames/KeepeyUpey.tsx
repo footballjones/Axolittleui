@@ -333,7 +333,7 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
       onPause={() => setIsPaused(!isPaused)}
       isPaused={isPaused}
     >
-      <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100">
+      <div className="relative w-full h-full bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100 overflow-hidden">
         {/* Start/End Overlay */}
         {showOverlay && (
           <motion.div
@@ -508,8 +508,15 @@ export function KeepeyUpey({ onEnd, energy }: MiniGameProps) {
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="max-w-full max-h-full w-full h-full object-contain"
-          style={{ touchAction: 'none' }}
+          style={{ 
+            touchAction: 'none', 
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%'
+          }}
           onClick={(e) => {
             // Ignore click if it happened shortly after a touch event (mobile double-tap prevention)
             const now = performance.now();
