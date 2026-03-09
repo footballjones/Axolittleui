@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Axolotl, FoodItem } from '../types/game';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface AxolotlDisplayProps {
   axolotl: Axolotl;
@@ -13,6 +13,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
   // Start in center column (center third: 33-66%, so 50% is perfect)
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [facingLeft, setFacingLeft] = useState(false);
+  const foodFirstSeenRef = useRef<number | null>(null);
 
   // Reset to center column when component mounts (returning to aquarium screen)
   useEffect(() => {
@@ -27,12 +28,30 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
     }
   }, [clickTarget?.timestamp]); // Only trigger when timestamp changes (new click)
 
-  // Check for nearby food and swim to it
+  // Track when food first appears for 7-second delay
+  useEffect(() => {
+    if (foodItems.length > 0 && foodFirstSeenRef.current === null) {
+      foodFirstSeenRef.current = Date.now();
+    } else if (foodItems.length === 0) {
+      foodFirstSeenRef.current = null;
+    }
+  }, [foodItems.length]);
+
+  // Check for nearby food and swim to it (after 7-second delay)
   useEffect(() => {
     if (foodItems.length === 0) return;
 
     const settledFood = foodItems.filter(f => f.y > 10);
     if (settledFood.length === 0) return;
+
+    // Check if 7 seconds have passed since food first appeared
+    const now = Date.now();
+    const timeSinceFoodAppeared = foodFirstSeenRef.current 
+      ? (now - foodFirstSeenRef.current) / 1000 
+      : Infinity;
+    
+    // Only auto-seek food after 7 seconds
+    if (timeSinceFoodAppeared < 7) return;
 
     const closestFood = settledFood.reduce((closest, food) => {
       const distX = food.x - position.x;
@@ -46,7 +65,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
     }, { food: null as FoodItem | null, distance: Infinity });
 
     if (closestFood.food) {
-      if (closestFood.distance < 10) {
+      if (closestFood.distance < 7) {
         onEatFood(closestFood.food.id);
         return;
       }
