@@ -674,6 +674,7 @@ export function EggsPanel({
         pendingName={eggToHatch?.pendingName}
       />
     </motion.div>
+    </>
   );
 }
 
