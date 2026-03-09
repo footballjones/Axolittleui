@@ -94,8 +94,12 @@ export function generateAxolotl(
     birthDate: Date.now(),
     lastUpdated: Date.now(),
     recessiveGenes: genes,
+<<<<<<< HEAD
     rarity, // Store the rarity this axolotl came from
     lastLevel: 1, // Start at level 1
+=======
+    rarity,
+>>>>>>> 38a96ef (Add rarity display in XP bar and expand to 5 rarity tiers)
   };
 }
 

@@ -14,7 +14,7 @@ interface DisplayEgg {
   parentName: string;
   hatchesIn: string;
   emoji: string;
-  rarity: 'Common' | 'Rare' | 'Legendary';
+  rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
   rarityColor: string;
   rarityBorder: string;
   rarityText: string;
@@ -43,8 +43,16 @@ function formatTimeRemaining(incubationEndsAt: number): string {
   return `${minutes}m`;
 }
 
-function getRarityStyle(rarity: 'Common' | 'Rare' | 'Legendary') {
+function getRarityStyle(rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic') {
   switch (rarity) {
+    case 'Mythic':
+      return {
+        rarityColor: 'rgba(239,68,68,0.2)',
+        rarityBorder: 'rgba(239,68,68,0.5)',
+        rarityText: 'text-red-600',
+        glowColor: 'rgba(248,113,113,0.65)',
+        emoji: '🔥',
+      };
     case 'Legendary':
       return {
         rarityColor: 'rgba(245,158,11,0.2)',
@@ -53,20 +61,28 @@ function getRarityStyle(rarity: 'Common' | 'Rare' | 'Legendary') {
         glowColor: 'rgba(251,191,36,0.65)',
         emoji: '✨',
       };
-    case 'Rare':
+    case 'Epic':
       return {
         rarityColor: 'rgba(168,85,247,0.18)',
         rarityBorder: 'rgba(168,85,247,0.45)',
         rarityText: 'text-violet-600',
         glowColor: 'rgba(192,132,252,0.55)',
+        emoji: '💜',
+      };
+    case 'Rare':
+      return {
+        rarityColor: 'rgba(59,130,246,0.18)',
+        rarityBorder: 'rgba(59,130,246,0.45)',
+        rarityText: 'text-blue-600',
+        glowColor: 'rgba(96,165,250,0.55)',
         emoji: '🥚',
       };
-    default:
+    default: // Common
       return {
-        rarityColor: 'rgba(56,189,248,0.15)',
-        rarityBorder: 'rgba(56,189,248,0.38)',
-        rarityText: 'text-sky-600',
-        glowColor: 'rgba(103,232,249,0.5)',
+        rarityColor: 'rgba(255,255,255,0.15)',
+        rarityBorder: 'rgba(255,255,255,0.38)',
+        rarityText: 'text-white',
+        glowColor: 'rgba(255,255,255,0.5)',
         emoji: '🫧',
       };
   }

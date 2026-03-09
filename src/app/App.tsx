@@ -468,6 +468,22 @@ export default function App() {
                         <span className="text-white/50 text-[9px] font-medium">{currentLevelXP}/{nextLevelXP} XP</span>
                         <span className="text-white/30 text-[9px]">·</span>
                         <span className="text-white/50 text-[9px] font-medium capitalize">Stage: {axolotl.stage}</span>
+                        {axolotl.rarity && (
+                          <>
+                            <span className="text-white/30 text-[9px]">·</span>
+                            <span 
+                              className={`text-[9px] font-bold ${
+                                axolotl.rarity === 'Mythic' ? 'text-red-400' :
+                                axolotl.rarity === 'Legendary' ? 'text-amber-400' :
+                                axolotl.rarity === 'Epic' ? 'text-violet-400' :
+                                axolotl.rarity === 'Rare' ? 'text-blue-400' :
+                                'text-white'
+                              }`}
+                            >
+                              {axolotl.rarity}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   )}
