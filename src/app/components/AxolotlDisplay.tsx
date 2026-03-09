@@ -95,7 +95,7 @@ export function AxolotlDisplay({ axolotl, foodItems, onEatFood, clickTarget }: A
         top: `${position.y}%`,
       }}
       transition={{
-        duration: 15, // Slower movement
+        duration: 4, // Faster movement for both random swimming and click targets
         ease: [0.2, 0.8, 0.4, 1],
       }}
       style={{
