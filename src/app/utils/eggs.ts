@@ -19,12 +19,52 @@ export function createRebirthEgg(parent: Axolotl, pendingName?: string): Egg {
   }
   
   // Determine rarity based on generation and intellect
-  let rarity: 'Common' | 'Rare' | 'Legendary' = 'Common';
-  if (parent.generation >= 3 || parent.secondaryStats.intellect > 80) {
-    rarity = Math.random() < 0.3 ? 'Legendary' : 'Rare';
+  // Higher generation and intellect = better chance for higher rarity
+  let rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' = 'Common';
+  const rand = Math.random();
+  
+  if (parent.generation >= 5 || parent.secondaryStats.intellect > 90) {
+    // Very high generation or intellect - chance for Mythic
+    if (rand < 0.05) {
+      rarity = 'Mythic';
+    } else if (rand < 0.25) {
+      rarity = 'Legendary';
+    } else if (rand < 0.55) {
+      rarity = 'Epic';
+    } else if (rand < 0.85) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
+  } else if (parent.generation >= 4 || parent.secondaryStats.intellect > 85) {
+    // High generation or intellect - chance for Legendary
+    if (rand < 0.15) {
+      rarity = 'Legendary';
+    } else if (rand < 0.45) {
+      rarity = 'Epic';
+    } else if (rand < 0.75) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
+  } else if (parent.generation >= 3 || parent.secondaryStats.intellect > 80) {
+    // Good generation or intellect - chance for Epic
+    if (rand < 0.20) {
+      rarity = 'Epic';
+    } else if (rand < 0.60) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
   } else if (parent.generation >= 2 || parent.secondaryStats.intellect > 60) {
-    rarity = Math.random() < 0.5 ? 'Rare' : 'Common';
+    // Moderate generation or intellect - chance for Rare
+    if (rand < 0.50) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
   }
+  // Otherwise stays Common
   
   return {
     id: `egg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -47,13 +87,53 @@ export function createBreedingEgg(parent1: Axolotl, parent2: Axolotl): Egg {
   // Determine rarity (higher with both parents having high intellect or high generation)
   const avgIntellect = (parent1.secondaryStats.intellect + parent2.secondaryStats.intellect) / 2;
   const maxGeneration = Math.max(parent1.generation, parent2.generation);
+  const minIntellect = Math.min(parent1.secondaryStats.intellect, parent2.secondaryStats.intellect);
   
-  let rarity: 'Common' | 'Rare' | 'Legendary' = 'Common';
-  if (maxGeneration >= 3 || avgIntellect > 80) {
-    rarity = Math.random() < 0.3 ? 'Legendary' : 'Rare';
+  let rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' = 'Common';
+  const rand = Math.random();
+  
+  if (maxGeneration >= 5 || (avgIntellect > 90 && minIntellect > 80)) {
+    // Very high generation or both parents have high intellect - chance for Mythic
+    if (rand < 0.05) {
+      rarity = 'Mythic';
+    } else if (rand < 0.25) {
+      rarity = 'Legendary';
+    } else if (rand < 0.55) {
+      rarity = 'Epic';
+    } else if (rand < 0.85) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
+  } else if (maxGeneration >= 4 || (avgIntellect > 85 && minIntellect > 70)) {
+    // High generation or both parents have good intellect - chance for Legendary
+    if (rand < 0.15) {
+      rarity = 'Legendary';
+    } else if (rand < 0.45) {
+      rarity = 'Epic';
+    } else if (rand < 0.75) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
+  } else if (maxGeneration >= 3 || avgIntellect > 80) {
+    // Good generation or high average intellect - chance for Epic
+    if (rand < 0.20) {
+      rarity = 'Epic';
+    } else if (rand < 0.60) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
   } else if (maxGeneration >= 2 || avgIntellect > 60) {
-    rarity = Math.random() < 0.5 ? 'Rare' : 'Common';
+    // Moderate generation or intellect - chance for Rare
+    if (rand < 0.50) {
+      rarity = 'Rare';
+    } else {
+      rarity = 'Common';
+    }
   }
+  // Otherwise stays Common
   
   return {
     id: `egg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
