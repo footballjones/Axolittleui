@@ -111,7 +111,9 @@ export default function App() {
     handleRemoveFriend,
     handleBreed,
     handleRebirth,
+    handleReleaseAxolotl,
     handleHatchEgg,
+    handleMoveToIncubator,
     handleBoostEgg,
     handleGiftEgg,
     handleDiscardEgg,
@@ -367,7 +369,7 @@ export default function App() {
                   <motion.button
                     onClick={() => setShowXPBar(!showXPBar)}
                     className="relative flex-shrink-0 rounded-lg overflow-hidden border border-white/30 backdrop-blur-sm"
-                    style={{ width: 56, height: 22 }}
+                    style={{ width: 70, height: 27.5 }}
                     whileTap={{ scale: 0.95 }}
                   >
                     {/* Track */}
@@ -385,31 +387,33 @@ export default function App() {
                       style={{ width: '40%' }}
                     />
                     {/* Label */}
-                    <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-black tracking-tight drop-shadow-[0_0_4px_rgba(0,0,0,0.4)]">
+                    <span className="absolute inset-0 flex items-center justify-center text-white font-black tracking-tight drop-shadow-[0_0_4px_rgba(0,0,0,0.4)]" style={{ fontSize: '12.5px' }}>
                       Lv.{currentLevel}
                     </span>
                   </motion.button>
 
                   {/* Axolotl Name */}
-                  <h1 className="text-base font-bold text-white tracking-tight truncate flex-1 min-w-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">{axolotl.name}</h1>
+                  <h1 className="font-bold text-white tracking-tight truncate flex-1 min-w-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]" style={{ fontSize: '20px' }}>{axolotl.name}</h1>
 
                   {/* Compact currency counters */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <motion.button
                       onClick={() => { setShopSection('opals'); setActiveModal('shop'); }}
-                      className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-md px-1.5 py-0.5 border border-white/20 hover:bg-white/25 transition-colors cursor-pointer"
+                      className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-md border border-white/20 hover:bg-white/25 transition-colors cursor-pointer"
+                      style={{ padding: '0.15625rem 0.46875rem' }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Sparkles className="w-3 h-3 text-cyan-200" strokeWidth={2.5} />
-                      <span className="text-white text-[11px] font-semibold tabular-nums">{opals}</span>
+                      <Sparkles className="text-cyan-200" style={{ width: '15px', height: '15px' }} strokeWidth={2.5} />
+                      <span className="text-white font-semibold tabular-nums" style={{ fontSize: '13.75px' }}>{opals}</span>
                     </motion.button>
                     <motion.button
                       onClick={() => { setShopSection('coins'); setActiveModal('shop'); }}
-                      className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-md px-1.5 py-0.5 border border-white/20 hover:bg-white/25 transition-colors cursor-pointer"
+                      className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-md border border-white/20 hover:bg-white/25 transition-colors cursor-pointer"
+                      style={{ padding: '0.15625rem 0.46875rem' }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Coins className="w-3 h-3 text-amber-200" strokeWidth={2.5} />
-                      <span className="text-white text-[11px] font-semibold tabular-nums">{coins}</span>
+                      <Coins className="text-amber-200" style={{ width: '15px', height: '15px' }} strokeWidth={2.5} />
+                      <span className="text-white font-semibold tabular-nums" style={{ fontSize: '13.75px' }}>{coins}</span>
                     </motion.button>
                   </div>
                   
@@ -417,15 +421,16 @@ export default function App() {
                   <motion.button
                     ref={menuButtonRef}
                     onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
-                    className="relative bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-1.5 transition-all border border-white/30 flex-shrink-0"
+                    className="relative bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all border border-white/30 flex-shrink-0"
+                    style={{ padding: '0.46875rem' }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     title="Menu"
                   >
                     {showHamburgerMenu ? (
-                      <X className="w-4 h-4 text-white" strokeWidth={2.5} />
+                      <X className="text-white" style={{ width: '20px', height: '20px' }} strokeWidth={2.5} />
                     ) : (
-                      <Menu className="w-4 h-4 text-white" strokeWidth={2.5} />
+                      <Menu className="text-white" style={{ width: '20px', height: '20px' }} strokeWidth={2.5} />
                     )}
                     {/* Notification dot */}
                     {hasNotifications && !showHamburgerMenu && (
@@ -488,42 +493,41 @@ export default function App() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {/* Home (far left) + Mini Games & Shop (far right) */}
-                <div className="flex justify-between items-center mt-1">
+                {/* Home, Mini Games, Shop buttons - evenly spaced */}
+                <div className="flex justify-between items-center mt-1 gap-2">
                   <motion.button
                     onClick={() => { setCurrentScreen('home'); setShowHamburgerMenu(false); }}
-                    className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl p-2 active:bg-white/30 transition-colors"
+                    className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
+                    style={{ padding: '16px' }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 3 }}
                     title="Home"
                   >
-                    <Home className="w-5 h-5 text-white" strokeWidth={2.5} />
+                    <Home className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
                   </motion.button>
-                  <div className="flex gap-1.5">
-                    {currentScreen !== 'games' && (
-                      <motion.button
-                        onClick={() => setCurrentScreen('games')}
-                        className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl p-2 active:bg-white/30 transition-colors"
-                        whileTap={{ scale: 0.93 }}
-                        animate={{ rotate: [0, -5, 5, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
-                        title="Mini Games"
-                      >
-                        <Gamepad2 className="w-5 h-5 text-white" strokeWidth={2.5} />
-                      </motion.button>
-                    )}
-                    <motion.button
-                      onClick={() => setActiveModal('shop')}
-                      className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl p-2 active:bg-white/30 transition-colors"
-                      whileTap={{ scale: 0.93 }}
-                      animate={{ rotate: [0, -5, 5, 0] }}
-                      transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 1.5 }}
-                      title="Shop"
-                    >
-                      <ShoppingCart className="w-5 h-5 text-white" strokeWidth={2.5} />
-                    </motion.button>
-                  </div>
+                  <motion.button
+                    onClick={() => setCurrentScreen('games')}
+                    className={`bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1 ${currentScreen === 'games' ? 'opacity-60' : ''}`}
+                    style={{ padding: '16px' }}
+                    whileTap={{ scale: 0.93 }}
+                    animate={{ rotate: [0, -5, 5, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                    title="Mini Games"
+                  >
+                    <Gamepad2 className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setActiveModal('shop')}
+                    className="bg-white/[0.17] backdrop-blur-sm border border-white/30 rounded-xl active:bg-white/30 transition-colors flex-1"
+                    style={{ padding: '16px' }}
+                    whileTap={{ scale: 0.93 }}
+                    animate={{ rotate: [0, -5, 5, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 1.5 }}
+                    title="Shop"
+                  >
+                    <ShoppingCart className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
+                  </motion.button>
                 </div>
               </div>
             </div>
@@ -868,7 +872,10 @@ export default function App() {
                           onClose={() => setShowEggsPanel(false)}
                           incubatorEgg={gameState?.incubatorEgg || null}
                           nurseryEggs={gameState?.nurseryEggs || []}
+                          axolotl={gameState?.axolotl || null}
                           onHatch={handleHatchEgg}
+                          onReleaseAxolotl={handleReleaseAxolotl}
+                          onMoveToIncubator={handleMoveToIncubator}
                           onBoost={handleBoostEgg}
                           onGift={handleGiftEgg}
                           onDiscard={handleDiscardEgg}
