@@ -28,7 +28,11 @@ interface DisplayEgg {
 const UNLOCKED_SLOTS = 6;
 const TOTAL_SLOTS = 18;
 
-function formatTimeRemaining(incubationEndsAt: number): string {
+function formatTimeRemaining(incubationEndsAt: number | undefined): string {
+  if (!incubationEndsAt || typeof incubationEndsAt !== 'number') {
+    return 'Ready!';
+  }
+  
   const now = Date.now();
   const remaining = incubationEndsAt - now;
   
@@ -691,6 +695,23 @@ function EggSlot({ slotIndex, egg, onSelect, isIncubator = false }: { slotIndex:
       >
         <span className={`${isIncubator ? 'text-[2rem]' : 'text-[1.4rem]'} opacity-70`}>🥚</span>
         <span className="text-[9px] text-violet-600/80 font-bold tracking-wider uppercase">Empty</span>
+      </div>
+    );
+  }
+
+  // Ensure egg has all required properties before rendering
+  if (!egg || !egg.rarityColor || !egg.rarityBorder || !egg.glowColor || !egg.emoji || !egg.rarity || !egg.rarityText) {
+    return (
+      <div
+        className={`${slotSize} rounded-2xl flex flex-col items-center justify-center gap-1.5`}
+        style={{
+          background: 'rgba(255,255,255,0.65)',
+          border: '1.5px dashed rgba(168,85,247,0.5)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)',
+        }}
+      >
+        <span className={`${isIncubator ? 'text-[2rem]' : 'text-[1.4rem]'} opacity-70`}>🥚</span>
+        <span className="text-[9px] text-violet-600/80 font-bold tracking-wider uppercase">Error</span>
       </div>
     );
   }
