@@ -27,8 +27,8 @@ const ACCELERATION = 0.3;
 const DECELERATION = 0.2;
 
 // Dash
-const DASH_DISTANCE = 60;
-const DASH_DURATION = 200;
+const DASH_DISTANCE = 100; // Increased from 60 to go further
+const DASH_DURATION = 150; // Reduced from 200ms to dash faster
 const DASH_COOLDOWN_BASE = 5000;
 const DASH_INVULN_MS = 200;
 
