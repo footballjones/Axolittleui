@@ -497,36 +497,57 @@ export default function App() {
                 <div className="flex justify-between items-center mt-1 gap-3">
                   <motion.button
                     onClick={() => { setCurrentScreen('home'); setShowHamburgerMenu(false); }}
-                    className="bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1"
-                    style={{ padding: '5.6px' }}
+                    className="relative bg-white/[0.02] backdrop-blur-md border-2 border-white/50 rounded-xl active:bg-white/15 transition-all flex-1 overflow-hidden"
+                    style={{ 
+                      padding: '5.6px',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.1)'
+                    }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 3 }}
                     title="Home"
                   >
-                    <Home className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
+                    {/* Glass highlight effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none rounded-xl" />
+                    {/* Inner border for glass depth */}
+                    <div className="absolute inset-[2px] border border-white/20 rounded-lg pointer-events-none" />
+                    <Home className="relative z-10 text-white mx-auto drop-shadow-lg" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
                   </motion.button>
                   <motion.button
                     onClick={() => setCurrentScreen('games')}
-                    className={`bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1 ${currentScreen === 'games' ? 'opacity-60' : ''}`}
-                    style={{ padding: '8.4px' }}
+                    className={`relative bg-white/[0.02] backdrop-blur-md border-2 border-white/50 rounded-xl active:bg-white/15 transition-all flex-1 overflow-hidden ${currentScreen === 'games' ? 'opacity-60' : ''}`}
+                    style={{ 
+                      padding: '8.4px',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.1)'
+                    }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
                     title="Mini Games"
                   >
-                    <Gamepad2 className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
+                    {/* Glass highlight effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none rounded-xl" />
+                    {/* Inner border for glass depth */}
+                    <div className="absolute inset-[2px] border border-white/20 rounded-lg pointer-events-none" />
+                    <Gamepad2 className="relative z-10 text-white mx-auto drop-shadow-lg" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
                   </motion.button>
                   <motion.button
                     onClick={() => setActiveModal('shop')}
-                    className="bg-white/[0.05] backdrop-blur-sm border border-white/10 rounded-xl active:bg-white/10 transition-colors flex-1"
-                    style={{ padding: '5.6px' }}
+                    className="relative bg-white/[0.02] backdrop-blur-md border-2 border-white/50 rounded-xl active:bg-white/15 transition-all flex-1 overflow-hidden"
+                    style={{ 
+                      padding: '5.6px',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.1)'
+                    }}
                     whileTap={{ scale: 0.93 }}
                     animate={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, delay: 1.5 }}
                     title="Shop"
                   >
-                    <ShoppingCart className="text-white mx-auto" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
+                    {/* Glass highlight effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none rounded-xl" />
+                    {/* Inner border for glass depth */}
+                    <div className="absolute inset-[2px] border border-white/20 rounded-lg pointer-events-none" />
+                    <ShoppingCart className="relative z-10 text-white mx-auto drop-shadow-lg" style={{ width: '40px', height: '40px' }} strokeWidth={2.5} />
                   </motion.button>
                 </div>
               </div>
